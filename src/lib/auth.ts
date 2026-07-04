@@ -52,5 +52,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET || "wanderlore-secret-key-2026-super-secure-jwt",
+  trustHost: true,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "wanderlore-secret-key-2026-super-secure-jwt",
 });

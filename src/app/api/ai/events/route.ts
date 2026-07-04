@@ -30,7 +30,15 @@ export async function POST(req: Request) {
 
     const data = await generateLocalEvents(destination, category);
 
-    return NextResponse.json({ success: true, data }, { status: 200 });
+    return NextResponse.json(
+      { success: true, data },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("Events API Error:", error);
     return NextResponse.json(

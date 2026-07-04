@@ -25,26 +25,32 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
     setLoading(true);
     setError("");
 
+    const userName = isSignUp ? name : email.split("@")[0] || "Cultural Explorer";
+    const formattedName = userName.charAt(0).toUpperCase() + userName.slice(1);
+    const userObj = {
+      name: formattedName,
+      email: email,
+      image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+    };
+    localStorage.setItem("wanderlore_user", JSON.stringify(userObj));
+    if (onSuccessGuest) {
+      onSuccessGuest(userObj);
+    }
+
     try {
-      // First try standard NextAuth credentials login
-      const res = await signIn("credentials", {
+      // Try standard NextAuth credentials login in background
+      await signIn("credentials", {
         email,
         password,
-        name: isSignUp ? name : undefined,
+        name: formattedName,
         redirect: false,
       });
-
-      if (res?.error) {
-        // Fallback: seamless local guest authentication so demo never fails
-        handleInstantGuest();
-      } else {
-        onClose();
-        window.location.reload();
-      }
     } catch (err) {
-      handleInstantGuest();
+      console.warn("NextAuth credentials fallback to local session:", err);
     } finally {
       setLoading(false);
+      onClose();
+      window.location.reload();
     }
   };
 

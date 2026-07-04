@@ -25,21 +25,15 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Check local storage for seamless demo user or badges
     const storedUser = localStorage.getItem("wanderlore_user");
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
-      } catch (e) {}
+      } catch (e) {
+        setUser(null);
+      }
     } else {
-      // Default demo explorer state
-      const defaultUser = {
-        name: "Elena Vance",
-        email: "elena.vance@anthropologist.org",
-        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
-      };
-      setUser(defaultUser);
-      localStorage.setItem("wanderlore_user", JSON.stringify(defaultUser));
+      setUser(null);
     }
 
     const storedBadges = localStorage.getItem("wanderlore_badges");

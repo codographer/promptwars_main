@@ -52,11 +52,17 @@ export function CulturalPassport() {
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
-      } catch (e) {}
+      } catch (e) {
+        setUser({
+          name: "Guest Explorer",
+          email: "guest@wanderlore.ai",
+          image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+        });
+      }
     } else {
       setUser({
-        name: "Elena Vance",
-        email: "elena.vance@anthropologist.org",
+        name: "Guest Explorer",
+        email: "guest@wanderlore.ai",
         image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
       });
     }
