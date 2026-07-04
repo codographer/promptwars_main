@@ -288,6 +288,97 @@ async function enrichEventPhotos(events: LocalEvent[], destination: string): Pro
 
 
 /**
+ * Fetches real, factual grounding context from Wikipedia APIs to guide GenAI prompts.
+ */
+async function fetchWikipediaGroundingContext(intent: ResolvedQueryIntent): Promise<string> {
+  const destName = intent.cleanDestination;
+  const contextParts: string[] = [];
+
+  // 1. Fetch main destination summary
+  try {
+    const sumRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(destName)}`, {
+      headers: { "User-Agent": "WanderLoreAI/1.0 (https://github.com/wanderlore; contact@wanderlore.ai)" },
+    });
+    if (sumRes.ok) {
+      const sumJson = await sumRes.json();
+      if (sumJson.extract) {
+        contextParts.push(`Destination Overview (${destName}): ${sumJson.extract}`);
+      }
+    }
+  } catch {}
+
+  // 2. Fetch landmarks / attractions
+  try {
+    const attrRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(intent.searchQuery)}&prop=extracts&exintro&explaintext&exchars=400&format=json`,
+      { headers: { "User-Agent": "WanderLoreAI/1.0 (https://github.com/wanderlore; contact@wanderlore.ai)" } }
+    );
+    if (attrRes.ok) {
+      const attrJson = await attrRes.json();
+      const pages = attrJson.query?.pages ? Object.values<Record<string, unknown> & { title?: string; extract?: string; index?: number }>(attrJson.query.pages) : [];
+      pages.sort((a, b) => (a.index || 999) - (b.index || 999));
+
+      const landmarkContexts = pages
+        .filter((p) => {
+          if (!p.title) return false;
+          const lowerTitle = p.title.toLowerCase();
+          return !(
+            lowerTitle.includes("list of") ||
+            lowerTitle.includes("tourist attraction") ||
+            lowerTitle === destName.toLowerCase() ||
+            lowerTitle.includes("architecture of") ||
+            lowerTitle.includes("history of")
+          );
+        })
+        .slice(0, 5)
+        .map((p) => `- Landmark: ${p.title}\n  Details: ${p.extract || "Factual historical site in " + destName}`);
+
+      if (landmarkContexts.length > 0) {
+        contextParts.push(`Factual Landmarks & Sites from Wikipedia:\n${landmarkContexts.join("\n")}`);
+      }
+    }
+  } catch {}
+
+  return contextParts.length > 0
+    ? contextParts.join("\n\n")
+    : `No Wikipedia context found for ${destName}. Ensure generated guide is highly realistic and corresponds to real geographic locations.`;
+}
+
+/**
+ * Fetches real, factual description of a specific landmark from Wikipedia APIs to ground storytelling.
+ */
+async function fetchLandmarkGroundingContext(landmarkName: string, destination: string): Promise<string> {
+  try {
+    const res = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(landmarkName)}`,
+      { headers: { "User-Agent": "WanderLoreAI/1.0 (https://github.com/wanderlore; contact@wanderlore.ai)" } }
+    );
+    if (res.ok) {
+      const json = await res.json();
+      if (json.extract) {
+        return `Landmark Factual Description from Wikipedia: ${json.extract}`;
+      }
+    }
+  } catch {}
+
+  try {
+    const res = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(landmarkName + " " + destination)}&prop=extracts&exintro&explaintext&exchars=600&format=json`,
+      { headers: { "User-Agent": "WanderLoreAI/1.0 (https://github.com/wanderlore; contact@wanderlore.ai)" } }
+    );
+    if (res.ok) {
+      const json = await res.json();
+      const pages = json.query?.pages ? Object.values<Record<string, unknown> & { extract?: string }>(json.query.pages) : [];
+      if (pages.length > 0 && pages[0].extract) {
+        return `Landmark Factual Description from Wikipedia: ${pages[0].extract}`;
+      }
+    }
+  } catch {}
+
+  return `Ensure the story is realistic and accurate regarding the historical and cultural significance of ${landmarkName} in ${destination}.`;
+}
+
+/**
  * Live Wikipedia Factual Discovery Fallback Engine
  * Generates 100% real, verified monuments and descriptions directly from live Wikipedia API when GenAI key is absent/limited.
  * Eliminates static/hardcoded pages and hallucinated AI names.
@@ -466,6 +557,8 @@ export async function generateDiscovery(
   }
 
   try {
+    const groundingContext = await fetchWikipediaGroundingContext(intent);
+
     const { object } = await generateObject({
       model: getGoogleModel(),
       schema: z.object({
@@ -517,8 +610,14 @@ export async function generateDiscovery(
         ),
       }),
       prompt: `You are an expert cultural anthropologist and travel guide. Look at the user's travel query: "${intent.rawQuery}". We resolved the target destination to "${intent.cleanDestination}" (${intent.country}) with a focus on "${intent.focusArea}".
-      Generate a comprehensive, factual cultural heritage guide for "${intent.cleanDestination}" that specifically highlights attractions, hidden gems, and local customs relevant to "${intent.focusArea}".
-      Ensure historical accuracy, authentic local experiences, indigenous communities, and off-the-beaten-path hidden gems. Avoid generic tourist clichés or hallucinations. Set destination to "${intent.cleanDestination}".`,
+      
+      Here is the real, factual grounding information retrieved from Wikipedia for "${intent.cleanDestination}":
+      ---
+      ${groundingContext}
+      ---
+      
+      Using the provided Wikipedia context, generate a comprehensive, factual cultural heritage guide for "${intent.cleanDestination}" that specifically highlights attractions, hidden gems, and local customs relevant to "${intent.focusArea}".
+      Your landmarks and hidden gems MUST be strictly grounded in the Wikipedia facts provided above. Do not invent fictional landmarks. Set destination to "${intent.cleanDestination}".`,
     });
 
     const enriched = await enrichDiscoverPhotos(object as DiscoverResponse);
@@ -581,6 +680,8 @@ export async function generateStory(
   }
 
   try {
+    const groundingContext = await fetchLandmarkGroundingContext(landmarkName, destination);
+
     const { object } = await generateObject({
       model: getGoogleModel(),
       schema: z.object({
@@ -599,13 +700,18 @@ export async function generateStory(
       }),
       prompt: `You are acting as a "${persona}" narrating the factual history and folklore of "${landmarkName}" in "${destination}". ${customTopic ? `Focus specifically on: ${customTopic}` : ""}.
       
+      Here is the real, factual grounding information retrieved from Wikipedia for "${landmarkName}":
+      ---
+      ${groundingContext}
+      ---
+      
       Persona Guidelines:
       - If 'historian': Use dignified, authoritative language from historical eras.
       - If 'artisan': Focus on craftsmanship, patience, materials, tools, and generational devotion.
       - If 'bard': Use poetic storytelling, folk traditions, and local legends.
       - If 'anthropologist': Use analytical, respectful insights on cultural preservation, indigenous customs, and modern tourism impacts.
       
-      Ensure historical authenticity, sensory details, and deep respect for cultural heritage.`,
+      Ensure historical authenticity, sensory details, and deep respect for cultural heritage. Your narrative MUST align with and be grounded in the factual Wikipedia info provided above. Do not hallucinate fictional history.`,
     });
 
     const result = object as StorytellerResponse;
@@ -674,6 +780,9 @@ export async function generateItinerary(
   }
 
   try {
+    const intent = await resolveQueryIntent(input.destination);
+    const groundingContext = await fetchWikipediaGroundingContext(intent);
+
     const { object } = await generateObject({
       model: getGoogleModel(),
       schema: z.object({
@@ -720,6 +829,12 @@ export async function generateItinerary(
       Cultural Interests: ${input.interests.join(", ")}.
       ${input.accessibilityNeeds ? `Accessibility Requirements: ${input.accessibilityNeeds}. Ensure all activities and transport respect these needs.` : ""}
       
+      Here is the real, factual grounding information retrieved from Wikipedia for "${destName}":
+      ---
+      ${groundingContext}
+      ---
+      
+      Using the provided Wikipedia context, generate a detailed, realistic itinerary. Every single landmark or site mentioned in the morning, afternoon, or evening activities MUST correspond to real, verifiable places in "${destName}". Avoid fictional locations.
       Focus on authentic local engagement, supporting indigenous artisans, seasonal gastronomy, and sustainable tourism practices. Avoid crowded tourist traps during peak hours. Set destination to "${destName}".`,
     });
 
@@ -836,6 +951,9 @@ export async function generateLocalEvents(
   }
 
   try {
+    const intent = await resolveQueryIntent(rawDestination);
+    const groundingContext = await fetchWikipediaGroundingContext(intent);
+
     const { object } = await generateObject({
       model: getGoogleModel(),
       schema: z.object({
@@ -853,7 +971,14 @@ export async function generateLocalEvents(
           })
         ),
       }),
-      prompt: `List 4 authentic seasonal cultural events, traditional festivals, artisan workshops, or community gatherings in or near "${destName}". Category filter: ${category}. Ensure high cultural authenticity scores and real local traditions.`,
+      prompt: `List 4 authentic seasonal cultural events, traditional festivals, artisan workshops, or community gatherings in or near "${destName}". Category filter: ${category}.
+      
+      Here is the real, factual grounding information retrieved from Wikipedia for "${destName}":
+      ---
+      ${groundingContext}
+      ---
+      
+      Using the provided Wikipedia context, generate realistic events and workshops that are directly tied to the actual history, landmarks, and traditional crafts of "${destName}". Ensure high cultural authenticity scores and real local traditions.`,
     });
 
     const enriched = await enrichEventPhotos(object.events as LocalEvent[], destName);
