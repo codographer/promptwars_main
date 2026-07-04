@@ -1,26 +1,143 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0f1117;
+  --foreground: #f4f1de;
+  --card: #181b26;
+  --card-border: #2a2e3d;
+  --primary: #e07a5f;
+  --primary-hover: #c65d42;
+  --accent: #d4af37;
+  --muted: #9496a1;
+  --success: #2a9d8f;
+  --info: #264653;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-border: var(--card-border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-success: var(--success);
+  --color-info: var(--info);
+  
+  --color-terracotta: #e07a5f;
+  --color-terracotta-dark: #c65d42;
+  --color-terracotta-light: #f2a692;
+  --color-gold: #d4af37;
+  --color-gold-light: #f3e5ab;
+  --color-obsidian: #0f1117;
+  --color-obsidian-card: #181b26;
+  --color-obsidian-border: #2a2e3d;
+  --color-cream: #f4f1de;
+  --color-cream-muted: #d1cec2;
+  --color-emerald: #2a9d8f;
+  --color-sapphire: #264653;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Base resets and smooth scrolling */
+* {
+  border-color: var(--card-border);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  selection-background-color: #e07a5f;
+  selection-color: #ffffff;
+}
+
+/* Glassmorphism utilities */
+.glass-panel {
+  background: rgba(24, 27, 38, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(224, 122, 95, 0.15);
+}
+
+.glass-panel-gold {
+  background: rgba(24, 27, 38, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+}
+
+.glass-nav {
+  background: rgba(15, 17, 23, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(42, 46, 61, 0.8);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f1117;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2e3d;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #e07a5f;
+}
+
+/* High Contrast Mode Override */
+.high-contrast {
+  --background: #000000 !important;
+  --foreground: #ffffff !important;
+  --card: #111111 !important;
+  --card-border: #ffffff !important;
+  --primary: #ffdd00 !important;
+  --accent: #00ffff !important;
+  --muted: #cccccc !important;
+}
+
+.high-contrast * {
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+/* Accessible focus ring */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Micro animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s infinite ease-in-out;
 }
