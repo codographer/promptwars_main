@@ -64,7 +64,7 @@ export function HeroSection() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Where to? (e.g., Kyoto, Oaxaca, Istanbul, Cusco...)"
+            placeholder="Where to? Ask a question or theme (e.g., 'Samurai culture in Japan' or 'Lucknow food')..."
             aria-label="Destination Search"
             className="w-full bg-transparent pl-3 pr-4 py-3 text-white text-base sm:text-lg placeholder-[#9496A1]/60 focus:outline-none font-medium"
           />

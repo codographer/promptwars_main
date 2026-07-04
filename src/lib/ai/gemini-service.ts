@@ -69,6 +69,119 @@ function setToCache<T>(key: string, data: T): void {
   });
 }
 
+export interface ResolvedQueryIntent {
+  rawQuery: string;
+  cleanDestination: string;
+  country: string;
+  searchQuery: string;
+  focusArea: string;
+  summary: string;
+}
+
+/**
+ * GenAI Query Understanding & Intent Resolution Engine
+ * Analyzes natural language questions, informal queries, or theme-based requests (e.g., "where can I see samurai culture in japan?" or "places with good food in northern india")
+ * Resolves the primary destination city/region and cultural focus area before generating content.
+ */
+export async function resolveQueryIntent(rawQuery: string): Promise<ResolvedQueryIntent> {
+  const cacheKey = `intent:${rawQuery.toLowerCase().trim()}`;
+  const cached = getFromCache<ResolvedQueryIntent>(cacheKey);
+  if (cached) return cached;
+
+  const apiKey = getApiKey();
+  const clean = rawQuery.trim();
+
+  // Fast check if simple 1-word or 2-word city name without question words or prepositions
+  const isSimpleCity = /^[a-zA-Z\s\-']{2,25}$/.test(clean) && !/\b(in|for|with|where|how|what|about|around|best|places|food|culture|spots|see|find|show|tell)\b/i.test(clean);
+  if (isSimpleCity && !apiKey) {
+    const dest = clean.charAt(0).toUpperCase() + clean.slice(1);
+    const res = {
+      rawQuery: clean,
+      cleanDestination: dest,
+      country: "Global Heritage Destination",
+      searchQuery: `tourist attractions in ${dest}`,
+      focusArea: "General Cultural Heritage & Architecture",
+      summary: `${dest} is an iconic world destination renowned for its historic architecture, vibrant community customs, and preserved living heritage.`,
+    };
+    setToCache(cacheKey, res);
+    return res;
+  }
+
+  if (apiKey) {
+    try {
+      const { object } = await generateObject({
+        model: getGoogleModel(),
+        schema: z.object({
+          cleanDestination: z.string().describe("The cleanly resolved primary city, region, or town name (e.g., 'Kyoto, Japan', 'Lucknow, India', 'Oaxaca, Mexico')"),
+          country: z.string().describe("The country name"),
+          searchQuery: z.string().describe("Optimal Wikipedia search query for finding real historical landmarks for this request (e.g. 'samurai castles landmarks in Kyoto', 'Mughlai architecture monuments in Lucknow')"),
+          focusArea: z.string().describe("The specific cultural theme or intent extracted from the user's query (e.g. 'Samurai Heritage & Martial Arts', 'Mughlai Gastronomy & Nawabi Architecture', 'Inca Ruins & Textiles')"),
+          summary: z.string().describe("A 2-sentence tailored overview explaining how this destination fulfills the user's specific query and interests."),
+        }),
+        prompt: `Analyze this user travel query or question: "${rawQuery}".
+        Identify the cleanly resolved primary geographic destination (city/region), the country, and the user's specific cultural interest or intent (focusArea).
+        Create an optimized search query to find relevant historical monuments and cultural attractions on Wikipedia.
+        If the query is a general city name, provide a comprehensive cultural overview. If the query asks a question or specifies a theme (like food, samurai, beaches, crafts), tailor the cleanDestination, focusArea, and summary directly to that intent. Never return the raw question as the city name.`,
+      });
+      const res = {
+        rawQuery: clean,
+        cleanDestination: object.cleanDestination,
+        country: object.country,
+        searchQuery: object.searchQuery,
+        focusArea: object.focusArea,
+        summary: object.summary,
+      };
+      setToCache(cacheKey, res);
+      return res;
+    } catch (error) {
+      console.warn("Gemini query intent resolution failed, using heuristic fallback:", error);
+    }
+  }
+
+  // Robust heuristic fallback for natural language queries when GenAI key is missing or offline
+  let dest = clean;
+  let focus = "General Cultural Heritage";
+  let search = `tourist attractions in ${clean}`;
+
+  const inMatch = clean.match(/\b(?:in|for|around|about|to)\s+([a-zA-Z\s\-']+)/i);
+  if (inMatch && inMatch[1]) {
+    dest = inMatch[1].trim();
+  }
+  dest = dest.replace(/\b(?:where|can|i|see|find|what|to|do|best|places|good|famous|spots|show|me|tell|about)\b/gi, "").trim();
+  if (!dest) dest = clean;
+  dest = dest.charAt(0).toUpperCase() + dest.slice(1);
+
+  if (/food|culinary|eat|dining|dish|recipe|gastronomy/i.test(clean)) {
+    focus = "Gastronomy & Traditional Culinary Arts";
+    search = `traditional food markets and historical monuments in ${dest}`;
+  } else if (/samurai|warrior|sword|martial|ninja/i.test(clean)) {
+    focus = "Samurai Heritage & Martial Arts Traditions";
+    search = `samurai castles and historical landmarks in ${dest}`;
+  } else if (/fort|castle|palace|ruin|monument|architecture/i.test(clean)) {
+    focus = "Historic Architecture & Ancient Fortifications";
+    search = `forts and historical palaces in ${dest}`;
+  } else if (/craft|artisan|textile|weaving|pottery|market/i.test(clean)) {
+    focus = "Artisan Guilds & Traditional Crafts";
+    search = `traditional craft markets and artisan quarters in ${dest}`;
+  } else if (/temple|shrine|church|sacred|monastery|spiritual/i.test(clean)) {
+    focus = "Sacred Sanctuaries & Spiritual Traditions";
+    search = `historic temples and sacred sites in ${dest}`;
+  } else {
+    search = `tourist attractions and historic landmarks in ${dest}`;
+  }
+
+  const res = {
+    rawQuery: clean,
+    cleanDestination: dest,
+    country: "Global Heritage Destination",
+    searchQuery: search,
+    focusArea: focus,
+    summary: `${dest} offers rich cultural experiences tailored to your interest in ${focus.toLowerCase()}, featuring authentic community traditions and preserved heritage.`,
+  };
+  setToCache(cacheKey, res);
+  return res;
+}
+
 /**
  * Expert-Verified Wikimedia Real Photo Retrieval Engine
  * Fetches actual, factual, non-hallucinated photographs from Wikimedia Commons via Wikipedia API.
@@ -190,10 +303,10 @@ function getCuratedMockKey(destination: string): string | null {
  * Generates 100% real, verified monuments and descriptions directly from live Wikipedia API when GenAI key is absent/limited.
  * Eliminates static/hardcoded pages and hallucinated AI names.
  */
-async function fetchFactualWikipediaDiscovery(destination: string): Promise<DiscoverResponse> {
-  const destName = destination.charAt(0).toUpperCase() + destination.slice(1).trim();
+async function fetchFactualWikipediaDiscovery(intent: ResolvedQueryIntent): Promise<DiscoverResponse> {
+  const destName = intent.cleanDestination;
   
-  let desc = `${destName} is an iconic world destination renowned for its historic architecture, vibrant community customs, and preserved living heritage.`;
+  let desc = intent.summary || `${destName} is an iconic world destination renowned for its historic architecture, vibrant community customs, and preserved living heritage.`;
   let heroImg = "";
 
   try {
@@ -202,7 +315,7 @@ async function fetchFactualWikipediaDiscovery(destination: string): Promise<Disc
     });
     if (sumRes.ok) {
       const sumJson = await sumRes.json();
-      if (sumJson.extract) desc = sumJson.extract;
+      if (sumJson.extract && !intent.rawQuery.includes("?")) desc = sumJson.extract;
       if (sumJson.originalimage?.source) heroImg = sumJson.originalimage.source;
       else if (sumJson.thumbnail?.source) heroImg = sumJson.thumbnail.source;
     }
@@ -215,7 +328,7 @@ async function fetchFactualWikipediaDiscovery(destination: string): Promise<Disc
   const landmarks: any[] = [];
   try {
     const attrRes = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent("tourist attractions in " + destName)}&prop=pageimages|extracts&exintro&explaintext&exchars=300&pithumbsize=1000&format=json`,
+      `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(intent.searchQuery)}&prop=pageimages|extracts&exintro&explaintext&exchars=300&pithumbsize=1000&format=json`,
       { headers: { "User-Agent": "WanderLoreAI/1.0 (https://github.com/wanderlore; contact@wanderlore.ai)" } }
     );
     if (attrRes.ok) {
@@ -249,7 +362,7 @@ async function fetchFactualWikipediaDiscovery(destination: string): Promise<Disc
           historicalSignificance: `Recognized as an integral part of ${destName}'s preserved heritage and public history.`,
           bestTimeToVisit: "Early morning or late afternoon for optimal lighting and quieter exploration.",
           image: img,
-          tags: ["Heritage", "Architecture", destName],
+          tags: [intent.focusArea, "Architecture", destName],
         });
 
         if (landmarks.length >= 4) break;
@@ -262,13 +375,13 @@ async function fetchFactualWikipediaDiscovery(destination: string): Promise<Disc
     const fallbackPhoto = await getRealWikimediaPhoto(`${destName} monument`, `${destName} architecture`);
     landmarks.push({
       id: `wiki-land-${destName.toLowerCase()}-default`,
-      name: `Historic Heritage District of ${destName}`,
+      name: `Historic Heritage Sanctuary of ${destName}`,
       category: "heritage",
-      description: `The cultural epicenter of ${destName}, home to preserved architecture, traditional markets, and historical landmarks.`,
+      description: `The cultural epicenter of ${destName}, home to preserved architecture, traditional markets, and historical landmarks aligning with ${intent.focusArea}.`,
       historicalSignificance: `A testament to the generations of artisans and citizens who built and preserved ${destName}.`,
       bestTimeToVisit: "Morning during local market hours.",
       image: fallbackPhoto,
-      tags: ["Heritage District", "Living History", destName],
+      tags: [intent.focusArea, "Living History", destName],
     });
   }
 
@@ -295,8 +408,8 @@ async function fetchFactualWikipediaDiscovery(destination: string): Promise<Disc
 
   const rawData: DiscoverResponse = {
     destination: destName,
-    country: "Global Heritage Destination",
-    tagline: `Factual Cultural Discovery & Living Heritage Guide for ${destName}`,
+    country: intent.country || "Global Heritage Destination",
+    tagline: `Cultural Discovery & Living Heritage Guide: ${intent.focusArea} in ${destName}`,
     description: desc,
     heroImage: heroImg,
     landmarks,
@@ -343,24 +456,25 @@ async function fetchFactualWikipediaDiscovery(destination: string): Promise<Disc
 }
 
 /**
- * Generates rich destination cultural discovery data with Caching, GenAI & Real Photo Enrichment
+ * Generates rich destination cultural discovery data with Caching, GenAI Intent Resolution & Real Photo Enrichment
  */
 export async function generateDiscovery(
-  destination: string
+  rawQuery: string
 ): Promise<DiscoverResponse> {
-  const cacheKey = `discover:${destination}`;
+  const intent = await resolveQueryIntent(rawQuery);
+  const cacheKey = `discover:${intent.cleanDestination.toLowerCase()}:${intent.focusArea.toLowerCase()}`;
   const cached = getFromCache<DiscoverResponse>(cacheKey);
   if (cached) {
     return cached;
   }
 
   const apiKey = getApiKey();
-  const curatedKey = getCuratedMockKey(destination);
+  const curatedKey = getCuratedMockKey(intent.cleanDestination);
 
   if (!apiKey) {
     const fallback = curatedKey
       ? MOCK_DISCOVER_DATA[curatedKey]
-      : await fetchFactualWikipediaDiscovery(destination);
+      : await fetchFactualWikipediaDiscovery(intent);
     setToCache(cacheKey, fallback);
     return fallback;
   }
@@ -416,17 +530,19 @@ export async function generateDiscovery(
           })
         ),
       }),
-      prompt: `You are an expert cultural anthropologist and travel guide. Generate a comprehensive, factual cultural heritage guide for "${destination}". Focus on authentic cultural experiences, historical accuracy, local etiquette, indigenous communities, and off-the-beaten-path hidden gems. Avoid generic tourist clichés or hallucinations.`,
+      prompt: `You are an expert cultural anthropologist and travel guide. Look at the user's travel query: "${intent.rawQuery}". We resolved the target destination to "${intent.cleanDestination}" (${intent.country}) with a focus on "${intent.focusArea}".
+      Generate a comprehensive, factual cultural heritage guide for "${intent.cleanDestination}" that specifically highlights attractions, hidden gems, and local customs relevant to "${intent.focusArea}".
+      Ensure historical accuracy, authentic local experiences, indigenous communities, and off-the-beaten-path hidden gems. Avoid generic tourist clichés or hallucinations. Set destination to "${intent.cleanDestination}".`,
     });
 
     const enriched = await enrichDiscoverPhotos(object as DiscoverResponse);
     setToCache(cacheKey, enriched);
     return enriched;
   } catch (error) {
-    console.warn(`Gemini API error during discover for "${destination}", using live Wikipedia enrichment:`, error);
+    console.warn(`Gemini API error during discover for "${intent.cleanDestination}", using live Wikipedia enrichment:`, error);
     const fallback = curatedKey
       ? MOCK_DISCOVER_DATA[curatedKey]
-      : await fetchFactualWikipediaDiscovery(destination);
+      : await fetchFactualWikipediaDiscovery(intent);
     setToCache(cacheKey, fallback);
     return fallback;
   }
@@ -436,11 +552,12 @@ export async function generateDiscovery(
  * Generates immersive storytelling for the Time-Traveler Guide with Caching & GenAI
  */
 export async function generateStory(
-  destination: string,
+  rawDestination: string,
   landmarkName: string,
   persona: PersonaId,
   customTopic?: string
 ): Promise<StorytellerResponse> {
+  const destination = (await resolveQueryIntent(rawDestination)).cleanDestination;
   const cacheKey = `story:${destination}:${landmarkName}:${persona}:${customTopic || ""}`;
   const cached = getFromCache<StorytellerResponse>(cacheKey);
   if (cached) {
@@ -525,14 +642,14 @@ function personaNameMap(p: PersonaId): string {
 export async function generateItinerary(
   input: ItineraryInput
 ): Promise<ItineraryResponse> {
-  const cacheKey = `itinerary:${input.destination}:${input.days}:${input.budget}:${input.interests.sort().join(",")}`;
+  const destName = (await resolveQueryIntent(input.destination)).cleanDestination;
+  const cacheKey = `itinerary:${destName}:${input.days}:${input.budget}:${input.interests.sort().join(",")}`;
   const cached = getFromCache<ItineraryResponse>(cacheKey);
   if (cached) {
     return cached;
   }
 
   const apiKey = getApiKey();
-  const destName = input.destination.charAt(0).toUpperCase() + input.destination.slice(1).trim();
 
   if (!apiKey) {
     const dynamicItin: ItineraryResponse = {
@@ -615,19 +732,19 @@ export async function generateItinerary(
         ),
         sustainabilitySummary: z.string(),
       }),
-      prompt: `Create a custom, factual ${input.days}-day cultural itinerary for "${input.destination}".
+      prompt: `Create a custom, factual ${input.days}-day cultural itinerary for "${destName}".
       Budget Level: ${input.budget}.
       Cultural Interests: ${input.interests.join(", ")}.
       ${input.accessibilityNeeds ? `Accessibility Requirements: ${input.accessibilityNeeds}. Ensure all activities and transport respect these needs.` : ""}
       
-      Focus on authentic local engagement, supporting indigenous artisans, seasonal gastronomy, and sustainable tourism practices. Avoid crowded tourist traps during peak hours.`,
+      Focus on authentic local engagement, supporting indigenous artisans, seasonal gastronomy, and sustainable tourism practices. Avoid crowded tourist traps during peak hours. Set destination to "${destName}".`,
     });
 
     const result = object as ItineraryResponse;
     setToCache(cacheKey, result);
     return result;
   } catch (error) {
-    console.warn(`Gemini API error during itinerary generation for "${input.destination}", using fallback:`, error);
+    console.warn(`Gemini API error during itinerary generation for "${destName}", using fallback:`, error);
     const dynamicItin: ItineraryResponse = {
       title: `${input.days}-Day ${destName} Cultural Immersion & Living Heritage Journey`,
       destination: destName,
@@ -671,17 +788,17 @@ export async function generateItinerary(
  * Generates local events and cultural workshops with Caching, GenAI & Real Photo Enrichment
  */
 export async function generateLocalEvents(
-  destination: string,
+  rawDestination: string,
   category: string = "all"
 ): Promise<LocalEvent[]> {
-  const cacheKey = `events:${destination}:${category}`;
+  const destName = (await resolveQueryIntent(rawDestination)).cleanDestination;
+  const cacheKey = `events:${destName}:${category}`;
   const cached = getFromCache<LocalEvent[]>(cacheKey);
   if (cached) {
     return cached;
   }
 
   const apiKey = getApiKey();
-  const destName = destination.charAt(0).toUpperCase() + destination.slice(1).trim();
 
   if (!apiKey) {
     const dynamicEvents: LocalEvent[] = [
@@ -753,14 +870,14 @@ export async function generateLocalEvents(
           })
         ),
       }),
-      prompt: `List 4 authentic seasonal cultural events, traditional festivals, artisan workshops, or community gatherings in or near "${destination}". Category filter: ${category}. Ensure high cultural authenticity scores and real local traditions.`,
+      prompt: `List 4 authentic seasonal cultural events, traditional festivals, artisan workshops, or community gatherings in or near "${destName}". Category filter: ${category}. Ensure high cultural authenticity scores and real local traditions.`,
     });
 
-    const enriched = await enrichEventPhotos(object.events as LocalEvent[], destination);
+    const enriched = await enrichEventPhotos(object.events as LocalEvent[], destName);
     setToCache(cacheKey, enriched);
     return enriched;
   } catch (error) {
-    console.warn(`Gemini API error during events generation for "${destination}", using dynamic enrichment:`, error);
+    console.warn(`Gemini API error during events generation for "${destName}", using dynamic enrichment:`, error);
     const dynamicEvents: LocalEvent[] = [
       {
         id: `event-${destName.toLowerCase()}-1`,
