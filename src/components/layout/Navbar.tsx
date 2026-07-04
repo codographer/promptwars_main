@@ -20,7 +20,7 @@ function NavbarInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [user, setUser] = useState<{ name: string; email: string; isGuest?: boolean } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; isGuest?: boolean; image?: string } | null>(null);
   const [badgeCount, setBadgeCount] = useState(3);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dynamicDest, setDynamicDest] = useState("kyoto");
