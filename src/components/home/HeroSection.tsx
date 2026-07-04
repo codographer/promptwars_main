@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Sparkles, Compass, MapPin, ArrowRight, Shield, Award } from "lucide-react";
+import { Search, Sparkles, Compass, MapPin, ArrowRight, Award } from "lucide-react";
 
 export function HeroSection() {
   const router = useRouter();

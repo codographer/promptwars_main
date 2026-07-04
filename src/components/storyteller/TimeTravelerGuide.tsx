@@ -15,6 +15,7 @@ import {
   Send,
   Loader2,
 } from "lucide-react";
+import Image from "next/image";
 import { StorytellerResponse, PersonaId, Persona, SavedItem, CulturalBadge } from "@/lib/types";
 
 interface TimeTravelerGuideProps {
@@ -255,9 +256,12 @@ export function TimeTravelerGuide({
                 }`}
               >
                 <div className="flex items-center gap-3 mb-3">
-                  <img
+                  <Image
+                    unoptimized
                     src={persona.avatar}
                     alt={persona.name}
+                    width={48}
+                    height={48}
                     className={`w-12 h-12 rounded-full object-cover border-2 ${
                       isSelected ? "border-[#D4AF37]" : "border-[#2A2E3D]"
                     }`}
@@ -336,6 +340,7 @@ export function TimeTravelerGuide({
                     onClick={handleSaveToPassport}
                     disabled={saved}
                     title="Save to Cultural Passport"
+                    aria-label={saved ? "Story saved to Cultural Passport" : "Save story to Cultural Passport"}
                     className="p-2 rounded-xl bg-[#181B26] border border-[#2A2E3D] text-[#D4AF37] hover:bg-[#D4AF37]/10 transition-colors"
                   >
                     {saved ? <Check className="w-4 h-4 text-[#2A9D8F]" /> : <BookmarkPlus className="w-4 h-4" />}

@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   MapPin,
 } from "lucide-react";
+import Image from "next/image";
 import confetti from "canvas-confetti";
 import { CulturalBadge, SavedItem } from "@/lib/types";
 
@@ -130,9 +131,12 @@ export function CulturalPassport() {
 
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-6">
-            <img
+            <Image
+              unoptimized
               src={user?.image || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80"}
               alt={user?.name || "Explorer"}
+              width={96}
+              height={96}
               className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-2 border-[#D4AF37] shadow-xl"
             />
             <div>
@@ -261,6 +265,7 @@ export function CulturalPassport() {
                   <button
                     onClick={() => handleRemoveItem(item.id)}
                     title="Remove Bookmark"
+                    aria-label={`Remove ${item.title} from passport`}
                     className="p-2 rounded-xl bg-[#0F1117] text-[#9496A1] hover:text-red-400 hover:bg-red-500/10 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />

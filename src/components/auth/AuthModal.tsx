@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, Mail, Lock, User, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { signIn } from "next-auth/react";
 
@@ -17,6 +17,24 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
   const [name, setName] = useState("Elena Vance");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // ESC key to close dialog
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Focus close button when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => closeButtonRef.current?.focus(), 50);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -75,9 +93,10 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
   return (
     <div
       role="dialog"
-      aria-label="Authentication Modal"
+      aria-labelledby="auth-modal-title"
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F1117]/80 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="relative w-full max-w-md p-6 overflow-hidden rounded-3xl glass-panel-gold bg-[#181B26] border border-[#D4AF37]/30 shadow-2xl text-[#F4F1DE]">
         {/* Background glow */}
@@ -85,8 +104,9 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-[#D4AF37]/20 rounded-full blur-3xl pointer-events-none" />
 
         <button
+          ref={closeButtonRef}
           onClick={onClose}
-          aria-label="Close Auth Modal"
+          aria-label="Close authentication dialog"
           className="absolute top-5 right-5 p-1 rounded-full text-[#9496A1] hover:text-white hover:bg-[#2A2E3D] transition-colors"
         >
           <X className="w-6 h-6" />
@@ -96,7 +116,7 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-[#E07A5F] to-[#D4AF37] text-white shadow-lg mb-3">
             <Sparkles className="w-6 h-6 animate-spin-slow" />
           </div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">
+          <h2 id="auth-modal-title" className="text-2xl font-bold text-white tracking-tight">
             {isSignUp ? "Join WanderLore AI" : "Welcome Back, Explorer"}
           </h2>
           <p className="text-sm text-[#9496A1] mt-1">
@@ -108,9 +128,10 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
         <button
           onClick={handleGoogleAuth}
           type="button"
+          aria-label="Continue with Google"
           className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white text-[#0F1117] font-semibold text-sm shadow-md hover:bg-gray-100 transition-all duration-200 mb-4 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="#4285F4"
               d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.58-5.17 3.58-9.17z"
@@ -131,7 +152,7 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
           <span>Continue with Google</span>
         </button>
 
-        <div className="relative my-5">
+        <div className="relative my-5" role="separator" aria-label="Or">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-[#2A2E3D]" />
           </div>
@@ -141,18 +162,20 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
         </div>
 
         {/* Credentials Form */}
-        <form onSubmit={handleCredentialsAuth} className="space-y-3">
+        <form onSubmit={handleCredentialsAuth} className="space-y-3" noValidate>
           {isSignUp && (
             <div>
-              <label className="block text-xs font-semibold text-[#9496A1] uppercase mb-1">Full Name</label>
+              <label htmlFor="auth-name" className="block text-xs font-semibold text-[#9496A1] uppercase mb-1">Full Name</label>
               <div className="relative">
-                <User className="absolute left-3 top-3 w-4 h-4 text-[#9496A1]" />
+                <User className="absolute left-3 top-3 w-4 h-4 text-[#9496A1]" aria-hidden="true" />
                 <input
+                  id="auth-name"
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Elena Vance"
+                  autoComplete="name"
                   className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#0F1117] border border-[#2A2E3D] text-sm text-white placeholder-[#9496A1]/50 focus:outline-none focus:border-[#E07A5F]"
                 />
               </div>
@@ -160,36 +183,42 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-[#9496A1] uppercase mb-1">Email Address</label>
+            <label htmlFor="auth-email" className="block text-xs font-semibold text-[#9496A1] uppercase mb-1">Email Address</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-3 w-4 h-4 text-[#9496A1]" />
+              <Mail className="absolute left-3 top-3 w-4 h-4 text-[#9496A1]" aria-hidden="true" />
               <input
+                id="auth-email"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="explorer@wanderlore.ai"
+                autoComplete="email"
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#0F1117] border border-[#2A2E3D] text-sm text-white placeholder-[#9496A1]/50 focus:outline-none focus:border-[#E07A5F]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#9496A1] uppercase mb-1">Password</label>
+            <label htmlFor="auth-password" className="block text-xs font-semibold text-[#9496A1] uppercase mb-1">Password</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-3 w-4 h-4 text-[#9496A1]" />
+              <Lock className="absolute left-3 top-3 w-4 h-4 text-[#9496A1]" aria-hidden="true" />
               <input
+                id="auth-password"
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                autoComplete={isSignUp ? "new-password" : "current-password"}
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#0F1117] border border-[#2A2E3D] text-sm text-white placeholder-[#9496A1]/50 focus:outline-none focus:border-[#E07A5F]"
               />
             </div>
           </div>
 
-          {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs text-red-400 mt-1">{error}</p>
+          )}
 
           <button
             type="submit"
@@ -197,7 +226,7 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
             className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-[#E07A5F] to-[#C65D42] text-white font-semibold text-sm shadow-lg hover:shadow-[#E07A5F]/30 transition-all duration-200 mt-4 disabled:opacity-50"
           >
             <span>{loading ? "Authenticating..." : isSignUp ? "Create Cultural Account" : "Sign In & Explore"}</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </button>
         </form>
 
@@ -205,6 +234,7 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
         <button
           type="button"
           onClick={handleInstantGuest}
+          aria-label="Continue instantly as guest without creating an account"
           className="w-full mt-3 py-2.5 text-xs font-semibold text-[#D4AF37] hover:text-[#F3E5AB] transition-colors border border-dashed border-[#D4AF37]/40 rounded-xl hover:bg-[#D4AF37]/10"
         >
           ⚡ Seamless Demo: Continue instantly as Guest
@@ -224,8 +254,8 @@ export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {
         </div>
 
         <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-[#9496A1]/80">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#2A9D8F]" />
-          <span>Strict OAuth & Zod Rate-Limited Security Layer</span>
+          <ShieldCheck className="w-3.5 h-3.5 text-[#2A9D8F]" aria-hidden="true" />
+          <span>Strict OAuth &amp; Zod Rate-Limited Security Layer</span>
         </div>
       </div>
     </div>

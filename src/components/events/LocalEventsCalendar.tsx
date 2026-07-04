@@ -11,6 +11,7 @@ import {
   Filter,
   Loader2,
 } from "lucide-react";
+import Image from "next/image";
 import { LocalEvent, SavedItem } from "@/lib/types";
 
 interface LocalEventsCalendarProps {
@@ -147,7 +148,7 @@ export function LocalEventsCalendar({
               <div>
                 {event.image && (
                   <div className="relative h-44 w-full rounded-2xl overflow-hidden mb-4 border border-[#2A2E3D]">
-                    <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <Image unoptimized src={event.image} alt={event.title} width={600} height={400} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0F1117] via-transparent to-transparent" />
                   </div>
                 )}

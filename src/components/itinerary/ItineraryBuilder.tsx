@@ -175,14 +175,19 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
         <form onSubmit={handleGenerate} className="space-y-6 lg:border-r lg:border-[#2A2E3D] lg:pr-8">
           {/* Duration Selector */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#9496A1] mb-2">
+            <label htmlFor="itinerary-days" className="block text-xs font-bold uppercase tracking-wider text-[#9496A1] mb-2">
               Duration (Days): <span className="text-white font-extrabold">{days} Days</span>
             </label>
             <input
+              id="itinerary-days"
               type="range"
               min="1"
               max="7"
               value={days}
+              aria-valuemin={1}
+              aria-valuemax={7}
+              aria-valuenow={days}
+              aria-valuetext={`${days} day${days === 1 ? "" : "s"}`}
               onChange={(e) => setDays(Number(e.target.value))}
               className="w-full accent-[#E07A5F] bg-[#0F1117] h-2 rounded-lg cursor-pointer"
             />
@@ -277,8 +282,8 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
         {/* Right Col: Itinerary Results Display (2 span) */}
         <div className="lg:col-span-2 space-y-6">
           {loading ? (
-            <div className="p-20 rounded-3xl bg-[#0F1117] border border-[#2A2E3D] flex flex-col items-center justify-center text-center">
-              <Loader2 className="w-12 h-12 text-[#E07A5F] animate-spin mb-4" />
+            <div role="status" aria-live="polite" aria-label="Loading itinerary" className="p-20 rounded-3xl bg-[#0F1117] border border-[#2A2E3D] flex flex-col items-center justify-center text-center">
+              <Loader2 className="w-12 h-12 text-[#E07A5F] animate-spin mb-4" aria-hidden="true" />
               <h3 className="text-xl font-bold text-white">Consulting Master Travel Anthropologists...</h3>
               <p className="text-xs text-[#9496A1] mt-1">
                 Optimizing routes for cultural immersion and seasonal authenticity in {destination}.
@@ -308,19 +313,21 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={handleExportText}
-                    title="Export as Markdown"
+                    title="Export itinerary as Markdown file"
+                    aria-label="Export itinerary as Markdown file"
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#181B26] border border-[#2A2E3D] text-[#F4F1DE] hover:bg-[#2A2E3D] text-xs font-bold transition-colors"
                   >
-                    <Download className="w-3.5 h-3.5" />
+                    <Download className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>Export</span>
                   </button>
 
                   <button
                     onClick={handleSaveItinerary}
                     disabled={saved}
+                    aria-label={saved ? "Itinerary saved to Passport" : "Save this itinerary to Cultural Passport"}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#D4AF37] text-[#0F1117] font-extrabold text-xs shadow hover:bg-[#F3E5AB] transition-colors disabled:opacity-50"
                   >
-                    {saved ? <Check className="w-4 h-4" /> : <BookmarkPlus className="w-4 h-4" />}
+                    {saved ? <Check className="w-4 h-4" aria-hidden="true" /> : <BookmarkPlus className="w-4 h-4" aria-hidden="true" />}
                     <span>{saved ? "Saved to Passport" : "Save Itinerary"}</span>
                   </button>
                 </div>

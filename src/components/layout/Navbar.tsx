@@ -14,6 +14,7 @@ import {
   X,
   Award,
 } from "lucide-react";
+import Image from "next/image";
 import { AuthModal } from "@/components/auth/AuthModal";
 
 function NavbarInner() {
@@ -111,7 +112,7 @@ function NavbarInner() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1 bg-[#181B26]/80 p-1.5 rounded-2xl border border-[#2A2E3D]">
+          <nav role="navigation" aria-label="Main navigation" className="hidden md:flex items-center gap-1 bg-[#181B26]/80 p-1.5 rounded-2xl border border-[#2A2E3D]">
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = checkIsActive(link);
@@ -119,6 +120,7 @@ function NavbarInner() {
                 <Link
                   key={link.name}
                   href={link.href}
+                  aria-current={isActive ? "page" : undefined}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 relative ${
                     isActive
                       ? "bg-[#E07A5F] text-white shadow-md"
@@ -142,9 +144,12 @@ function NavbarInner() {
             {user ? (
               <div className="flex items-center gap-3 pl-2 border-l border-[#2A2E3D]">
                 <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-[#181B26] border border-[#2A2E3D]">
-                  <img
+                  <Image
+                    unoptimized
                     src={user.image || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80"}
                     alt={user.name}
+                    width={32}
+                    height={32}
                     className="w-8 h-8 rounded-full object-cover border border-[#D4AF37]"
                   />
                   <div className="text-left">
@@ -155,6 +160,7 @@ function NavbarInner() {
                 <button
                   onClick={handleSignOut}
                   title="Sign Out"
+                  aria-label="Sign Out"
                   className="p-2 rounded-xl bg-[#181B26] border border-[#2A2E3D] text-[#9496A1] hover:text-red-400 hover:border-red-400/40 transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
@@ -175,6 +181,9 @@ function NavbarInner() {
           <div className="flex md:hidden items-center gap-2">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
               className="p-2.5 rounded-xl bg-[#181B26] border border-[#2A2E3D] text-white focus:outline-none"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -184,7 +193,7 @@ function NavbarInner() {
 
         {/* Mobile Navigation Dropdown */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-[#181B26] border-b border-[#2A2E3D] px-4 pt-3 pb-6 space-y-2 animate-in slide-in-from-top-2">
+          <div id="mobile-menu" className="md:hidden bg-[#181B26] border-b border-[#2A2E3D] px-4 pt-3 pb-6 space-y-2 animate-in slide-in-from-top-2">
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = checkIsActive(link);
@@ -216,7 +225,7 @@ function NavbarInner() {
               {user ? (
                 <div className="flex items-center justify-between px-2">
                   <div className="flex items-center gap-3">
-                    <img src={user.image} alt={user.name} className="w-10 h-10 rounded-full border border-[#D4AF37]" />
+                    <Image unoptimized src={user.image!} alt={user.name} width={40} height={40} className="w-10 h-10 rounded-full border border-[#D4AF37] object-cover" />
                     <div>
                       <p className="text-sm font-bold text-white">{user.name}</p>
                       <p className="text-xs text-[#2A9D8F]">✨ Level 3 Explorer</p>

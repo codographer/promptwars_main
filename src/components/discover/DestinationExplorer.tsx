@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
+import Image from "next/image";
 import {
   Compass,
   MapPin,
@@ -134,9 +135,12 @@ export function DestinationExplorer({
               className="group flex flex-col rounded-3xl bg-[#181B26] border border-[#2A2E3D] overflow-hidden shadow-xl hover:border-[#E07A5F]/50 transition-all duration-300"
             >
               <div className="relative h-56 w-full overflow-hidden">
-                <img
+                <Image
+                  unoptimized
                   src={landmark.image}
                   alt={landmark.name}
+                  width={600}
+                  height={400}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#181B26] via-transparent to-transparent" />
@@ -145,7 +149,8 @@ export function DestinationExplorer({
                 </span>
                 <button
                   onClick={() => handleSave(landmark.id, landmark.name, "landmark")}
-                  title="Save to Passport"
+                  title={`Save ${landmark.name} to Passport`}
+                  aria-label={`Save ${landmark.name} to Passport`}
                   className="absolute top-4 right-4 p-2.5 rounded-full bg-[#0F1117]/80 text-white hover:bg-[#E07A5F] transition-colors"
                 >
                   {savedItems[landmark.id] ? <Check className="w-4 h-4 text-[#2A9D8F]" /> : <BookmarkPlus className="w-4 h-4" />}
@@ -184,6 +189,7 @@ export function DestinationExplorer({
                   {onSelectLandmarkForStory && (
                     <button
                       onClick={() => onSelectLandmarkForStory(landmark.name)}
+                      aria-label={`Hear AI Story about ${landmark.name}`}
                       className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#E07A5F]/20 text-[#E07A5F] hover:bg-[#E07A5F] hover:text-white text-xs font-bold transition-all"
                     >
                       <Headphones className="w-3.5 h-3.5" />
@@ -211,6 +217,8 @@ export function DestinationExplorer({
                 </span>
                 <button
                   onClick={() => handleSave(gem.id, gem.name, "hidden_gem")}
+                  aria-label={`Save ${gem.name} to Passport`}
+                  title={`Save ${gem.name} to Passport`}
                   className="p-1.5 rounded-lg bg-[#0F1117] text-[#9496A1] hover:text-white"
                 >
                   {savedItems[gem.id] ? <Check className="w-4 h-4 text-[#2A9D8F]" /> : <BookmarkPlus className="w-4 h-4" />}

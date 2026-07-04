@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { HeroSection } from "@/components/home/HeroSection";
 import { TimeTravelerGuide } from "@/components/storyteller/TimeTravelerGuide";
 import {
@@ -12,7 +13,6 @@ import {
   ArrowRight,
   Heart,
   Globe2,
-  Users,
   Lock,
   Zap,
 } from "lucide-react";
@@ -92,9 +92,12 @@ export default function HomePage() {
               className="group flex flex-col rounded-3xl bg-[#181B26] border border-[#2A2E3D] overflow-hidden shadow-xl hover:border-[#D4AF37] hover:translate-y-[-6px] transition-all duration-300"
             >
               <div className="relative h-64 w-full overflow-hidden">
-                <img
+                <Image
+                  unoptimized
                   src={dest.image}
                   alt={dest.name}
+                  width={600}
+                  height={400}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#181B26] via-[#181B26]/30 to-transparent" />
