@@ -7,104 +7,104 @@ import {
   Trash2,
   Sparkles,
   CheckCircle2,
-  Compass,
-  Calendar,
-  Headphones,
   MapPin,
-  Share2,
 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { CulturalBadge, SavedItem } from "@/lib/types";
+
+const defaultBadges: CulturalBadge[] = [
+  {
+    id: "starter_explorer",
+    title: "Global Cultural Explorer",
+    description: "Initialized your WanderLore AI Cultural Passport.",
+    iconName: "Compass",
+    category: "explorer",
+    unlockedAt: "2026-07-04",
+  },
+  {
+    id: "storyteller_master",
+    title: "Time-Traveler Scholar",
+    description: "Listened to historical folklore across centuries.",
+    iconName: "Headphones",
+    category: "storyteller",
+    unlockedAt: "2026-07-04",
+  },
+  {
+    id: "itinerary_master",
+    title: "Master Cultural Planner",
+    description: "Created a sustainable, authentic multi-day heritage itinerary.",
+    iconName: "Calendar",
+    category: "explorer",
+    unlockedAt: "2026-07-04",
+  },
+];
 
 export function CulturalPassport() {
-  const [badges, setBadges] = useState<any[]>([]);
-  const [savedItems, setSavedItems] = useState<any[]>([]);
-  const [user, setUser] = useState<any>(null);
-
-  const defaultBadges = [
-    {
-      id: "starter_explorer",
-      title: "Global Cultural Explorer",
-      description: "Initialized your WanderLore AI Cultural Passport.",
-      icon: Compass,
-      category: "explorer",
-      unlockedAt: "2026-07-04",
-    },
-    {
-      id: "storyteller_master",
-      title: "Time-Traveler Scholar",
-      description: "Listened to historical folklore across centuries.",
-      icon: Headphones,
-      category: "storyteller",
-      unlockedAt: "2026-07-04",
-    },
-    {
-      id: "itinerary_master",
-      title: "Master Cultural Planner",
-      description: "Created a sustainable, authentic multi-day heritage itinerary.",
-      icon: Calendar,
-      category: "explorer",
-      unlockedAt: "2026-07-04",
-    },
-  ];
+  const [badges, setBadges] = useState<CulturalBadge[]>([]);
+  const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
+  const [user, setUser] = useState<{ name: string; email: string; image?: string } | null>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("wanderlore_user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
+    const timer = setTimeout(() => {
+      const storedUser = localStorage.getItem("wanderlore_user");
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch {
+          setUser({
+            name: "Guest Explorer",
+            email: "guest@wanderlore.ai",
+            image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+          });
+        }
+      } else {
         setUser({
           name: "Guest Explorer",
           email: "guest@wanderlore.ai",
           image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
         });
       }
-    } else {
-      setUser({
-        name: "Guest Explorer",
-        email: "guest@wanderlore.ai",
-        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
-      });
-    }
 
-    const storedBadges = localStorage.getItem("wanderlore_badges");
-    if (storedBadges) {
-      try {
-        setBadges(JSON.parse(storedBadges));
-      } catch (e) {
+      const storedBadges = localStorage.getItem("wanderlore_badges");
+      if (storedBadges) {
+        try {
+          setBadges(JSON.parse(storedBadges));
+        } catch {
+          setBadges(defaultBadges);
+        }
+      } else {
         setBadges(defaultBadges);
+        localStorage.setItem("wanderlore_badges", JSON.stringify(defaultBadges));
       }
-    } else {
-      setBadges(defaultBadges);
-      localStorage.setItem("wanderlore_badges", JSON.stringify(defaultBadges));
-    }
 
-    const storedItems = localStorage.getItem("wanderlore_saved_items");
-    if (storedItems) {
-      try {
-        setSavedItems(JSON.parse(storedItems));
-      } catch (e) {}
-    } else {
-      // Starter saved item
-      const starter = [
-        {
-          id: "starter-1",
-          type: "landmark",
-          title: "Fushimi Inari Taisha",
-          subtitle: "Kyoto, Japan",
-          savedAt: "2026-07-04",
-        },
-        {
-          id: "starter-2",
-          type: "hidden_gem",
-          title: "San Martín Tilcajete Alebrije Workshops",
-          subtitle: "Oaxaca, Mexico",
-          savedAt: "2026-07-04",
-        },
-      ];
-      setSavedItems(starter);
-      localStorage.setItem("wanderlore_saved_items", JSON.stringify(starter));
-    }
+      const storedItems = localStorage.getItem("wanderlore_saved_items");
+      if (storedItems) {
+        try {
+          setSavedItems(JSON.parse(storedItems));
+        } catch {}
+      } else {
+        // Starter saved item
+        const starter: SavedItem[] = [
+          {
+            id: "starter-1",
+            type: "landmark",
+            title: "Fushimi Inari Taisha",
+            subtitle: "Kyoto, Japan",
+            savedAt: "2026-07-04",
+          },
+          {
+            id: "starter-2",
+            type: "hidden_gem",
+            title: "San Martín Tilcajete Alebrije Workshops",
+            subtitle: "Oaxaca, Mexico",
+            savedAt: "2026-07-04",
+          },
+        ];
+        setSavedItems(starter);
+        localStorage.setItem("wanderlore_saved_items", JSON.stringify(starter));
+      }
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleRemoveItem = (id: string) => {

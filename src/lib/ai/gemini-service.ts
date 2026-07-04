@@ -7,6 +7,8 @@ import {
   LocalEvent,
   ItineraryResponse,
   PersonaId,
+  Landmark,
+  HiddenGem,
 } from "@/lib/types";
 import { ItineraryInput } from "@/lib/validations";
 
@@ -40,7 +42,7 @@ interface CacheEntry<T> {
 }
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const queryCache = new Map<string, CacheEntry<any>>();
+const queryCache = new Map<string, CacheEntry<unknown>>();
 
 function getFromCache<T>(key: string): T | null {
   const cleanKey = key.toLowerCase().trim();
@@ -196,7 +198,7 @@ async function getRealWikimediaPhoto(query: string, fallbackQuery?: string): Pro
       if (!res.ok) return null;
       const json = await res.json();
       if (!json.query || !json.query.pages) return null;
-      const pages = Object.values<any>(json.query.pages);
+      const pages = Object.values<Record<string, unknown> & { index?: number; thumbnail?: { source?: string }; title?: string }>(json.query.pages);
       // Sort by search result relevance index so top article photo is selected
       pages.sort((a, b) => (a.index || 999) - (b.index || 999));
       
@@ -228,7 +230,7 @@ async function getRealWikimediaPhoto(query: string, fallbackQuery?: string): Pro
           return src;
         }
       }
-    } catch (e) {
+    } catch {
       // Ignore network errors during enrichment
     }
     return null;
@@ -306,13 +308,13 @@ async function fetchFactualWikipediaDiscovery(intent: ResolvedQueryIntent): Prom
       if (sumJson.originalimage?.source) heroImg = sumJson.originalimage.source;
       else if (sumJson.thumbnail?.source) heroImg = sumJson.thumbnail.source;
     }
-  } catch (e) {}
+  } catch {}
 
   if (!heroImg) {
     heroImg = await getRealWikimediaPhoto(`${destName} city skyline`, `${destName} architecture`);
   }
 
-  const landmarks: any[] = [];
+  const landmarks: Landmark[] = [];
   try {
     const attrRes = await fetch(
       `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(intent.searchQuery)}&prop=pageimages|extracts&exintro&explaintext&exchars=300&pithumbsize=1000&format=json`,
@@ -320,7 +322,7 @@ async function fetchFactualWikipediaDiscovery(intent: ResolvedQueryIntent): Prom
     );
     if (attrRes.ok) {
       const attrJson = await attrRes.json();
-      const pages = attrJson.query?.pages ? Object.values<any>(attrJson.query.pages) : [];
+      const pages = attrJson.query?.pages ? Object.values<Record<string, unknown> & { index?: number; title?: string; extract?: string; thumbnail?: { source?: string }; originalimage?: { source?: string } }>(attrJson.query.pages) : [];
       pages.sort((a, b) => (a.index || 999) - (b.index || 999));
 
       for (const p of pages) {
@@ -355,7 +357,7 @@ async function fetchFactualWikipediaDiscovery(intent: ResolvedQueryIntent): Prom
         if (landmarks.length >= 4) break;
       }
     }
-  } catch (e) {}
+  } catch {}
 
   // Ensure at least 2 factual landmarks exist if Wikipedia search was sparse
   if (landmarks.length === 0) {
@@ -372,7 +374,7 @@ async function fetchFactualWikipediaDiscovery(intent: ResolvedQueryIntent): Prom
     });
   }
 
-  const hiddenGems: any[] = [
+  const hiddenGems: HiddenGem[] = [
     {
       id: `wiki-gem-${destName.toLowerCase()}-1`,
       name: `Traditional Artisan & Heritage Market of ${destName}`,

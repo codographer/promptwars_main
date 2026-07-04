@@ -45,7 +45,7 @@ export async function POST(req: Request) {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Itinerary API Error:", error);
     return NextResponse.json(
       { error: "Failed to generate custom cultural itinerary" },

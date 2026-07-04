@@ -1,11 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Calendar,
   Sparkles,
-  DollarSign,
-  Heart,
   Check,
   BookmarkPlus,
   Loader2,
@@ -17,7 +15,7 @@ import {
   Info,
   ShieldCheck,
 } from "lucide-react";
-import { ItineraryResponse, ItineraryDay } from "@/lib/types";
+import { ItineraryResponse, ItineraryDay, SavedItem, CulturalBadge } from "@/lib/types";
 
 interface ItineraryBuilderProps {
   destination: string;
@@ -53,7 +51,7 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
     );
   };
 
-  const fetchItinerary = async () => {
+  const fetchItinerary = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/ai/itinerary", {
@@ -74,16 +72,19 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
       } else {
         setItinerary(null);
       }
-    } catch (e) {
+    } catch {
       setItinerary(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [destination, days, budget, interests, accessibilityNeeds]);
 
   useEffect(() => {
-    fetchItinerary();
-  }, [destination]);
+    const timer = setTimeout(() => {
+      fetchItinerary();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchItinerary]);
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,21 +97,21 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
 
   const handleSaveItinerary = () => {
     if (!itinerary) return;
-    const item = {
-      id: `itinerary-${Date.now()}`,
-      type: "itinerary" as any,
+    const item: SavedItem = {
+      id: `itinerary-${Math.random().toString(36).slice(2, 9)}`,
+      type: "itinerary",
       title: itinerary.title,
       subtitle: `${itinerary.totalDays} Days • ${destination}`,
       savedAt: new Date().toLocaleDateString(),
-      data: itinerary,
+      data: itinerary as unknown as Record<string, unknown>,
     };
 
     const existing = JSON.parse(localStorage.getItem("wanderlore_saved_items") || "[]");
     localStorage.setItem("wanderlore_saved_items", JSON.stringify([item, ...existing]));
 
     // Award badge
-    const badges = JSON.parse(localStorage.getItem("wanderlore_badges") || "[]");
-    if (!badges.some((b: any) => b.id === "itinerary_master")) {
+    const badges: CulturalBadge[] = JSON.parse(localStorage.getItem("wanderlore_badges") || "[]");
+    if (!badges.some((b: CulturalBadge) => b.id === "itinerary_master")) {
       badges.push({
         id: "itinerary_master",
         title: "Master Cultural Planner",

@@ -140,5 +140,5 @@ export interface SavedItem {
   subtitle: string;
   image?: string;
   savedAt: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }

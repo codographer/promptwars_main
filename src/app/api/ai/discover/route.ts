@@ -37,7 +37,7 @@ export async function POST(req: Request) {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Discover API Error:", error);
     return NextResponse.json(
       { error: "Failed to generate cultural discovery data" },

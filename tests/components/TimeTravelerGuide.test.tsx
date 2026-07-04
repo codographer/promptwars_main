@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { TimeTravelerGuide } from "@/components/storyteller/TimeTravelerGuide";
 
 describe("TimeTravelerGuide Component", () => {
@@ -24,7 +24,7 @@ describe("TimeTravelerGuide Component", () => {
           tags: ["Zen", "Golden Pavilion"],
         },
       }),
-    } as any);
+    } as unknown as Response);
   });
 
   it("should render the component with default Kyoto landmark and historian persona", async () => {

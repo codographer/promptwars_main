@@ -12,44 +12,44 @@ export function AccessibilityMenu() {
 
   // Load preferences from localStorage on mount
   useEffect(() => {
-    const savedContrast = localStorage.getItem("a11y_high_contrast") === "true";
-    const savedSize = (localStorage.getItem("a11y_text_size") as any) || "normal";
-    const savedVoice = localStorage.getItem("a11y_voice") !== "false";
+    const timeout = setTimeout(() => {
+      const savedContrast = localStorage.getItem("a11y_high_contrast") === "true";
+      const savedSize = (localStorage.getItem("a11y_text_size") as "normal" | "large" | "xl") || "normal";
+      const savedVoice = localStorage.getItem("a11y_voice") !== "false";
 
-    if (savedContrast) {
-      setHighContrast(true);
-      document.documentElement.classList.add("high-contrast");
-    }
-    applyTextSize(savedSize);
-    setVoiceEnabled(savedVoice);
+      setHighContrast(savedContrast);
+      setTextSize(savedSize);
+      setVoiceEnabled(savedVoice);
+
+      if (savedContrast) document.documentElement.classList.add("high-contrast");
+      if (savedSize === "large") document.documentElement.style.fontSize = "115%";
+      else if (savedSize === "xl") document.documentElement.style.fontSize = "130%";
+    }, 0);
+    return () => clearTimeout(timeout);
   }, []);
 
   const toggleHighContrast = () => {
     const nextState = !highContrast;
     setHighContrast(nextState);
     localStorage.setItem("a11y_high_contrast", String(nextState));
-    if (nextState) {
-      document.documentElement.classList.add("high-contrast");
-      announce("High contrast mode enabled");
-    } else {
-      document.documentElement.classList.remove("high-contrast");
-      announce("High contrast mode disabled");
-    }
+    setTimeout(() => {
+      if (nextState) document.documentElement.classList.add("high-contrast");
+      else document.documentElement.classList.remove("high-contrast");
+    }, 0);
+    announce(nextState ? "High contrast mode enabled" : "High contrast mode disabled");
   };
 
   const applyTextSize = (size: "normal" | "large" | "xl") => {
     setTextSize(size);
     localStorage.setItem("a11y_text_size", size);
-    if (size === "large") {
-      document.documentElement.style.fontSize = "115%";
-      announce("Text size set to large");
-    } else if (size === "xl") {
-      document.documentElement.style.fontSize = "130%";
-      announce("Text size set to extra large");
-    } else {
-      document.documentElement.style.fontSize = "100%";
-      announce("Text size reset to normal");
-    }
+    setTimeout(() => {
+      if (size === "large") document.documentElement.style.fontSize = "115%";
+      else if (size === "xl") document.documentElement.style.fontSize = "130%";
+      else document.documentElement.style.fontSize = "100%";
+    }, 0);
+    if (size === "large") announce("Text size set to large");
+    else if (size === "xl") announce("Text size set to extra large");
+    else announce("Text size reset to normal");
   };
 
   const toggleVoice = () => {

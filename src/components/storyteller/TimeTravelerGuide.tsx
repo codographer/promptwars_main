@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Headphones,
   Volume2,
@@ -15,7 +15,7 @@ import {
   Send,
   Loader2,
 } from "lucide-react";
-import { StorytellerResponse, PersonaId, Persona } from "@/lib/types";
+import { StorytellerResponse, PersonaId, Persona, SavedItem, CulturalBadge } from "@/lib/types";
 
 interface TimeTravelerGuideProps {
   destination: string;
@@ -34,12 +34,15 @@ export function TimeTravelerGuide({
   const [loading, setLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speechRate, setSpeechRate] = useState(1.0);
-  const [speechPitch, setSpeechPitch] = useState(1.0);
+  const [speechPitch] = useState(1.0);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (initialLandmark) {
-      setLandmarkName(initialLandmark);
+      const timer = setTimeout(() => {
+        setLandmarkName(initialLandmark);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [initialLandmark]);
 
@@ -82,7 +85,14 @@ export function TimeTravelerGuide({
     },
   ];
 
-  const fetchStory = async (targetPersona: PersonaId, targetTopic?: string) => {
+  const stopAudio = useCallback(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+    }
+  }, []);
+
+  const fetchStory = useCallback(async (targetPersona: PersonaId, targetTopic?: string) => {
     setLoading(true);
     stopAudio();
     try {
@@ -103,16 +113,19 @@ export function TimeTravelerGuide({
       } else {
         setStoryData(null);
       }
-    } catch (e) {
+    } catch {
       setStoryData(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [destination, landmarkName, stopAudio]);
 
   useEffect(() => {
-    fetchStory(selectedPersona);
-  }, [destination, landmarkName]);
+    const timer = setTimeout(() => {
+      fetchStory(selectedPersona);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchStory, selectedPersona]);
 
   const handlePersonaSelect = (id: PersonaId) => {
     setSelectedPersona(id);
@@ -147,33 +160,26 @@ export function TimeTravelerGuide({
     }
   };
 
-  const stopAudio = () => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      setIsPlaying(false);
-    }
-  };
-
   useEffect(() => {
     return () => stopAudio();
-  }, []);
+  }, [stopAudio]);
 
   const handleSaveToPassport = () => {
     if (!storyData) return;
-    const item = {
-      id: `story-${Date.now()}`,
-      type: "landmark" as any,
+    const item: SavedItem = {
+      id: `story-${Math.random().toString(36).slice(2, 9)}`,
+      type: "landmark",
       title: storyData.title,
       subtitle: `${storyData.personaName} (${storyData.timePeriod})`,
       savedAt: new Date().toLocaleDateString(),
-      data: storyData,
+      data: storyData as unknown as Record<string, unknown>,
     };
 
     const existing = JSON.parse(localStorage.getItem("wanderlore_saved_items") || "[]");
     localStorage.setItem("wanderlore_saved_items", JSON.stringify([item, ...existing]));
 
-    const badges = JSON.parse(localStorage.getItem("wanderlore_badges") || "[]");
-    if (!badges.some((b: any) => b.id === "storyteller_master")) {
+    const badges: CulturalBadge[] = JSON.parse(localStorage.getItem("wanderlore_badges") || "[]");
+    if (!badges.some((b: CulturalBadge) => b.id === "storyteller_master")) {
       badges.push({
         id: "storyteller_master",
         title: "Time-Traveler Scholar",
@@ -423,11 +429,11 @@ export function TimeTravelerGuide({
                 </div>
                 {storyData.culturalProverb.original && (
                   <p className="text-2xl font-black text-white tracking-wide mb-2">
-                    "{storyData.culturalProverb.original}"
+                    &quot;{storyData.culturalProverb.original}&quot;
                   </p>
                 )}
                 <p className="text-base font-bold text-[#E07A5F] italic mb-3">
-                  "{storyData.culturalProverb.translation}"
+                  &quot;{storyData.culturalProverb.translation}&quot;
                 </p>
                 <p className="text-xs text-[#9496A1] leading-relaxed border-l-2 border-[#D4AF37] pl-3">
                   {storyData.culturalProverb.meaning}

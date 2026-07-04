@@ -20,7 +20,7 @@ function NavbarInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ name: string; email: string; isGuest?: boolean } | null>(null);
   const [badgeCount, setBadgeCount] = useState(3);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dynamicDest, setDynamicDest] = useState("kyoto");
@@ -29,36 +29,39 @@ function NavbarInner() {
   const currentTab = searchParams.get("tab") || "discover";
 
   useEffect(() => {
-    if (isExplorePage) {
-      const parts = pathname.split("/");
-      if (parts[2]) {
-        const dest = decodeURIComponent(parts[2].split("?")[0]);
-        setDynamicDest(dest);
-        localStorage.setItem("wanderlore_last_dest", dest);
+    const timer = setTimeout(() => {
+      if (isExplorePage) {
+        const parts = pathname.split("/");
+        if (parts[2]) {
+          const dest = decodeURIComponent(parts[2].split("?")[0]);
+          setDynamicDest(dest);
+          localStorage.setItem("wanderlore_last_dest", dest);
+        }
+      } else {
+        const saved = localStorage.getItem("wanderlore_last_dest");
+        if (saved) setDynamicDest(saved);
       }
-    } else {
-      const saved = localStorage.getItem("wanderlore_last_dest");
-      if (saved) setDynamicDest(saved);
-    }
 
-    const storedUser = localStorage.getItem("wanderlore_user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
+      const storedUser = localStorage.getItem("wanderlore_user");
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch {
+          setUser(null);
+        }
+      } else {
         setUser(null);
       }
-    } else {
-      setUser(null);
-    }
 
-    const storedBadges = localStorage.getItem("wanderlore_badges");
-    if (storedBadges) {
-      try {
-        const parsed = JSON.parse(storedBadges);
-        setBadgeCount(Array.isArray(parsed) ? parsed.length : 3);
-      } catch (e) {}
-    }
+      const storedBadges = localStorage.getItem("wanderlore_badges");
+      if (storedBadges) {
+        try {
+          const parsed = JSON.parse(storedBadges);
+          setBadgeCount(Array.isArray(parsed) ? parsed.length : 3);
+        } catch {}
+      }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [pathname, isExplorePage]);
 
   const handleSignOut = () => {

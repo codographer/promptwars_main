@@ -7,7 +7,7 @@ import { signIn } from "next-auth/react";
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccessGuest?: (user: any) => void;
+  onSuccessGuest?: (user: { name: string; email: string; isGuest?: boolean }) => void;
 }
 
 export function AuthModal({ isOpen, onClose, onSuccessGuest }: AuthModalProps) {

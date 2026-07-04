@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Compass,
   MapPin,
@@ -11,12 +11,10 @@ import {
   Check,
   Info,
   Headphones,
-  Calendar,
   AlertTriangle,
   Users,
-  Eye,
 } from "lucide-react";
-import { DiscoverResponse, Landmark, HiddenGem, CulturalEtiquette, HeritagePromotion } from "@/lib/types";
+import { DiscoverResponse } from "@/lib/types";
 
 interface DestinationExplorerProps {
   data: DiscoverResponse;
@@ -30,9 +28,9 @@ export function DestinationExplorer({
   const [activeTab, setActiveTab] = useState<"landmarks" | "gems" | "etiquette" | "heritage">("landmarks");
   const [savedItems, setSavedItems] = useState<Record<string, boolean>>({});
 
-  const handleSave = (id: string, title: string, type: "landmark" | "hidden_gem") => {
+  const handleSave = useCallback((id: string, title: string, type: "landmark" | "hidden_gem") => {
     const item = {
-      id: `${type}-${id}-${Date.now()}`,
+      id: `${type}-${id}-${Math.random().toString(36).slice(2, 9)}`,
       type,
       title,
       subtitle: data.destination,
@@ -46,7 +44,7 @@ export function DestinationExplorer({
     setTimeout(() => {
       setSavedItems((prev) => ({ ...prev, [id]: false }));
     }, 3000);
-  };
+  }, [data.destination]);
 
   return (
     <div className="space-y-8">
@@ -109,7 +107,7 @@ export function DestinationExplorer({
           }`}
         >
           <ShieldCheck className="w-4 h-4" />
-          <span>Local Etiquette & Do's</span>
+          <span>Local Etiquette &amp; Do&apos;s</span>
         </button>
 
         <button

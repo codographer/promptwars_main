@@ -11,7 +11,7 @@ import {
   Filter,
   Loader2,
 } from "lucide-react";
-import { LocalEvent } from "@/lib/types";
+import { LocalEvent, SavedItem } from "@/lib/types";
 
 interface LocalEventsCalendarProps {
   destination: string;
@@ -27,7 +27,7 @@ export function LocalEventsCalendar({
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState<Record<string, boolean>>({});
 
-  const fetchEvents = async (category: string) => {
+  const fetchEvents = useCallback(async (category: string) => {
     setLoading(true);
     try {
       const res = await fetch("/api/ai/events", {
@@ -42,32 +42,35 @@ export function LocalEventsCalendar({
       } else {
         setEvents([]);
       }
-    } catch (e) {
+    } catch {
       setEvents([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [destination]);
 
   useEffect(() => {
     if (!initialEvents || initialEvents.length === 0) {
-      fetchEvents("all");
+      const timer = setTimeout(() => {
+        fetchEvents("all");
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [destination]);
+  }, [destination, initialEvents, fetchEvents]);
 
   const handleFilter = (category: string) => {
     setActiveCategory(category);
     fetchEvents(category);
   };
 
-  const handleSaveEvent = (event: LocalEvent) => {
-    const item = {
-      id: `event-${event.id}-${Date.now()}`,
-      type: "landmark" as any,
+  const handleSaveEvent = useCallback((event: LocalEvent) => {
+    const item: SavedItem = {
+      id: `event-${event.id}-${Math.random().toString(36).slice(2, 9)}`,
+      type: "landmark",
       title: event.title,
       subtitle: `${event.dateRange} • ${event.location}`,
       savedAt: new Date().toLocaleDateString(),
-      data: event,
+      data: event as unknown as Record<string, unknown>,
     };
 
     const existing = JSON.parse(localStorage.getItem("wanderlore_saved_items") || "[]");
@@ -77,7 +80,7 @@ export function LocalEventsCalendar({
     setTimeout(() => {
       setSaved((prev) => ({ ...prev, [event.id]: false }));
     }, 3000);
-  };
+  }, []);
 
   const categories = [
     { id: "all", label: "All Gatherings" },

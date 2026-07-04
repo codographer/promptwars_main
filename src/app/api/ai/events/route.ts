@@ -39,7 +39,7 @@ export async function POST(req: Request) {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Events API Error:", error);
     return NextResponse.json(
       { error: "Failed to fetch cultural events and workshops" },

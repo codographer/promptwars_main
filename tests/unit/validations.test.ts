@@ -61,6 +61,16 @@ describe("Zod Validation Schemas", () => {
     const result = itinerarySchema.safeParse(input);
     expect(result.success).toBe(false);
   });
+
+  it("should validate an events request parameters", () => {
+    const input = {
+      destination: "Kyoto",
+      month: "October",
+      category: "festival",
+    };
+    const result = eventsSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("Security & Rate Limiting", () => {
