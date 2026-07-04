@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   CalendarDays,
   MapPin,
-  Sparkles,
   Award,
   Ticket,
   BookmarkPlus,
@@ -13,7 +12,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { LocalEvent } from "@/lib/types";
-import { MOCK_EVENTS_DATA } from "@/lib/ai/mock-data";
 
 interface LocalEventsCalendarProps {
   destination: string;
@@ -22,15 +20,14 @@ interface LocalEventsCalendarProps {
 
 export function LocalEventsCalendar({
   destination,
-  initialEvents = MOCK_EVENTS_DATA,
+  initialEvents,
 }: LocalEventsCalendarProps) {
-  const [events, setEvents] = useState<LocalEvent[]>(initialEvents);
+  const [events, setEvents] = useState<LocalEvent[]>(initialEvents || []);
   const [activeCategory, setActiveCategory] = useState("all");
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState<Record<string, boolean>>({});
 
-  const handleFilter = async (category: string) => {
-    setActiveCategory(category);
+  const fetchEvents = async (category: string) => {
     setLoading(true);
     try {
       const res = await fetch("/api/ai/events", {
@@ -43,19 +40,24 @@ export function LocalEventsCalendar({
       if (json.success && json.data) {
         setEvents(json.data);
       } else {
-        const filtered = category === "all"
-          ? MOCK_EVENTS_DATA
-          : MOCK_EVENTS_DATA.filter((e) => e.category === category);
-        setEvents(filtered);
+        setEvents([]);
       }
     } catch (e) {
-      const filtered = category === "all"
-        ? MOCK_EVENTS_DATA
-        : MOCK_EVENTS_DATA.filter((e) => e.category === category);
-      setEvents(filtered);
+      setEvents([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (!initialEvents || initialEvents.length === 0) {
+      fetchEvents("all");
+    }
+  }, [destination]);
+
+  const handleFilter = (category: string) => {
+    setActiveCategory(category);
+    fetchEvents(category);
   };
 
   const handleSaveEvent = (event: LocalEvent) => {
@@ -140,6 +142,12 @@ export function LocalEventsCalendar({
               className="flex flex-col justify-between rounded-3xl bg-[#0F1117] border border-[#2A2E3D] p-6 text-left shadow-xl hover:border-[#D4AF37]/50 transition-all duration-300 group"
             >
               <div>
+                {event.image && (
+                  <div className="relative h-44 w-full rounded-2xl overflow-hidden mb-4 border border-[#2A2E3D]">
+                    <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F1117] via-transparent to-transparent" />
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase bg-[#2A9D8F]/20 text-[#2A9D8F] border border-[#2A9D8F]/40">
                     🕒 {event.dateRange}

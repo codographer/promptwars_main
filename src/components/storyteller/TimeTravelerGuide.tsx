@@ -4,10 +4,8 @@ import React, { useState, useEffect } from "react";
 import {
   Headphones,
   Volume2,
-  VolumeX,
   Play,
   Pause,
-  RotateCcw,
   Sparkles,
   BookOpen,
   MessageSquare,
@@ -18,7 +16,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { StorytellerResponse, PersonaId, Persona } from "@/lib/types";
-import { MOCK_STORYTELLER_DATA } from "@/lib/ai/mock-data";
 
 interface TimeTravelerGuideProps {
   destination: string;
@@ -27,60 +24,64 @@ interface TimeTravelerGuideProps {
 
 export function TimeTravelerGuide({
   destination,
-  initialLandmark = "Kinkaku-ji (Golden Pavilion)",
+  initialLandmark,
 }: TimeTravelerGuideProps) {
+  const defaultLandmark = initialLandmark || `Historic Heritage Sanctuary of ${destination}`;
   const [selectedPersona, setSelectedPersona] = useState<PersonaId>("historian");
-  const [landmarkName, setLandmarkName] = useState(initialLandmark);
+  const [landmarkName, setLandmarkName] = useState(defaultLandmark);
   const [customTopic, setCustomTopic] = useState("");
-  const [storyData, setStoryData] = useState<StorytellerResponse>(
-    MOCK_STORYTELLER_DATA["historian"]
-  );
+  const [storyData, setStoryData] = useState<StorytellerResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speechRate, setSpeechRate] = useState(1.0);
   const [speechPitch, setSpeechPitch] = useState(1.0);
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => {
+    if (initialLandmark) {
+      setLandmarkName(initialLandmark);
+    }
+  }, [initialLandmark]);
+
   const personas: Persona[] = [
     {
       id: "historian",
-      name: "Lord Kenjiro",
-      title: "15th-Century Court Historian",
+      name: "Court Scholar & Archivist",
+      title: "Royal Historical Scholar",
       avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
       tone: "Authoritative, dignified, royal court elegance",
-      timePeriod: "Muromachi Period (1397 AD)",
-      description: "Chronicles the rise and fall of shoguns, architectural secrets, and imperial ceremonies.",
+      timePeriod: "Classical Heritage Era",
+      description: "Chronicles the rise and fall of dynasties, architectural triumphs, and formal state ceremonies.",
     },
     {
       id: "artisan",
-      name: "Master Haru",
-      title: "5th-Gen Silk Weaver",
+      name: "Master Guild Craftsman",
+      title: "Heritage Artisan & Builder",
       avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80",
       tone: "Patient, devoted, craftsman pride",
-      timePeriod: "Edo Period Living Craftsmanship",
-      description: "Reveals the physical labor, natural dyes, and ancestral devotion woven into every fabric.",
+      timePeriod: "Living Guild Traditions",
+      description: "Reveals the physical labor, natural materials, and ancestral devotion woven into local architecture and crafts.",
     },
     {
       id: "bard",
-      name: "Old Ren",
-      title: "Wandering Shamisen Bard",
+      name: "Wandering Folklore Bard",
+      title: "Storyteller of Legend & Myth",
       avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=256&q=80",
-      tone: "Poetic, mythical, campfire folklore",
-      timePeriod: "Timeless Supernatural Legends",
-      description: "Whispers of Kitsune fox guardians, haunted bamboo forests, and ancient proverbs.",
+      tone: "Poetic, mythical, evocative folklore",
+      timePeriod: "Timeless Spiritual Legends",
+      description: "Whispers of spiritual guardians, ancient community proverbs, and oral folklore passed down through centuries.",
     },
     {
       id: "anthropologist",
       name: "Dr. Elena Vance",
-      title: "Modern Anthropologist",
+      title: "Cultural Heritage Anthropologist",
       avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
       tone: "Analytical, respectful, preservationist",
       timePeriod: "Contemporary Analysis (2026)",
-      description: "Explains matriarchal arts guilds, overtourism solutions, and how to support indigenous heritage.",
+      description: "Explains cultural survival, indigenous customs, and practical ways travelers can support endangered heritage.",
     },
   ];
 
-  // Fetch story when persona or landmark changes
   const fetchStory = async (targetPersona: PersonaId, targetTopic?: string) => {
     setLoading(true);
     stopAudio();
@@ -100,14 +101,18 @@ export function TimeTravelerGuide({
       if (json.success && json.data) {
         setStoryData(json.data);
       } else {
-        setStoryData(MOCK_STORYTELLER_DATA[targetPersona]);
+        setStoryData(null);
       }
     } catch (e) {
-      setStoryData(MOCK_STORYTELLER_DATA[targetPersona]);
+      setStoryData(null);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchStory(selectedPersona);
+  }, [destination, landmarkName]);
 
   const handlePersonaSelect = (id: PersonaId) => {
     setSelectedPersona(id);
@@ -119,10 +124,9 @@ export function TimeTravelerGuide({
     fetchStory(selectedPersona, customTopic);
   };
 
-  // Web Speech API Text-to-Speech
   const toggleAudio = () => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      alert("Audio narration is not supported in your browser.");
+    if (typeof window === "undefined" || !("speechSynthesis" in window) || !storyData) {
+      alert("Audio narration is not supported or story is not ready.");
       return;
     }
 
@@ -155,9 +159,10 @@ export function TimeTravelerGuide({
   }, []);
 
   const handleSaveToPassport = () => {
+    if (!storyData) return;
     const item = {
       id: `story-${Date.now()}`,
-      type: "landmark",
+      type: "landmark" as any,
       title: storyData.title,
       subtitle: `${storyData.personaName} (${storyData.timePeriod})`,
       savedAt: new Date().toLocaleDateString(),
@@ -167,7 +172,6 @@ export function TimeTravelerGuide({
     const existing = JSON.parse(localStorage.getItem("wanderlore_saved_items") || "[]");
     localStorage.setItem("wanderlore_saved_items", JSON.stringify([item, ...existing]));
 
-    // Award badge
     const badges = JSON.parse(localStorage.getItem("wanderlore_badges") || "[]");
     if (!badges.some((b: any) => b.id === "storyteller_master")) {
       badges.push({
@@ -210,7 +214,7 @@ export function TimeTravelerGuide({
             type="text"
             value={landmarkName}
             onChange={(e) => setLandmarkName(e.target.value)}
-            placeholder="Landmark name (e.g., Fushimi Inari)"
+            placeholder="Landmark name (e.g., Bara Imambara)"
             className="w-full sm:w-64 px-4 py-2.5 rounded-xl bg-[#0F1117] border border-[#2A2E3D] text-sm text-white focus:outline-none focus:border-[#D4AF37]"
           />
           <button
@@ -278,6 +282,14 @@ export function TimeTravelerGuide({
           <h3 className="text-lg font-bold text-white">Channeling Historical Archives...</h3>
           <p className="text-xs text-[#9496A1] mt-1">
             {currentPersonaObj.name} is preparing a rich cultural narrative for {landmarkName}.
+          </p>
+        </div>
+      ) : !storyData ? (
+        <div className="mt-10 p-16 rounded-2xl bg-[#0F1117] border border-[#2A2E3D] text-center flex flex-col items-center justify-center">
+          <Sparkles className="w-10 h-10 text-[#D4AF37] mb-3 opacity-60" />
+          <h3 className="text-lg font-bold text-white">Select a Persona or Landmark to Begin</h3>
+          <p className="text-xs text-[#9496A1] max-w-md mt-1">
+            Choose a time-traveling narrator above or type a specific landmark name to generate an immersive audio-visual storytelling experience for {destination}.
           </p>
         </div>
       ) : (
@@ -403,38 +415,42 @@ export function TimeTravelerGuide({
           {/* Sidebar Column: Proverbs & Historical Facts (1 span) */}
           <div className="space-y-6">
             {/* Cultural Proverb Card */}
-            <div className="p-6 rounded-3xl glass-panel-gold bg-[#181B26] border border-[#D4AF37]/40 shadow-xl">
-              <div className="flex items-center gap-2 text-[#D4AF37] font-bold text-xs uppercase tracking-wider mb-4">
-                <Sparkles className="w-4 h-4 animate-spin-slow" />
-                <span>Ancestral Proverb & Wisdom</span>
-              </div>
-              {storyData.culturalProverb.original && (
-                <p className="text-2xl font-black text-white tracking-wide mb-2">
-                  "{storyData.culturalProverb.original}"
+            {storyData.culturalProverb && (
+              <div className="p-6 rounded-3xl glass-panel-gold bg-[#181B26] border border-[#D4AF37]/40 shadow-xl">
+                <div className="flex items-center gap-2 text-[#D4AF37] font-bold text-xs uppercase tracking-wider mb-4">
+                  <Sparkles className="w-4 h-4 animate-spin-slow" />
+                  <span>Ancestral Proverb & Wisdom</span>
+                </div>
+                {storyData.culturalProverb.original && (
+                  <p className="text-2xl font-black text-white tracking-wide mb-2">
+                    "{storyData.culturalProverb.original}"
+                  </p>
+                )}
+                <p className="text-base font-bold text-[#E07A5F] italic mb-3">
+                  "{storyData.culturalProverb.translation}"
                 </p>
-              )}
-              <p className="text-base font-bold text-[#E07A5F] italic mb-3">
-                "{storyData.culturalProverb.translation}"
-              </p>
-              <p className="text-xs text-[#9496A1] leading-relaxed border-l-2 border-[#D4AF37] pl-3">
-                {storyData.culturalProverb.meaning}
-              </p>
-            </div>
+                <p className="text-xs text-[#9496A1] leading-relaxed border-l-2 border-[#D4AF37] pl-3">
+                  {storyData.culturalProverb.meaning}
+                </p>
+              </div>
+            )}
 
             {/* Verified Historical Fact Card */}
-            <div className="p-6 rounded-3xl bg-[#0F1117] border border-[#2A9D8F]/40 shadow-xl">
-              <div className="flex items-center gap-2 text-[#2A9D8F] font-bold text-xs uppercase tracking-wider mb-3">
-                <BookOpen className="w-4 h-4" />
-                <span>Verified Historical Record</span>
+            {storyData.historicalFact && (
+              <div className="p-6 rounded-3xl bg-[#0F1117] border border-[#2A9D8F]/40 shadow-xl">
+                <div className="flex items-center gap-2 text-[#2A9D8F] font-bold text-xs uppercase tracking-wider mb-3">
+                  <BookOpen className="w-4 h-4" />
+                  <span>Verified Historical Record</span>
+                </div>
+                <p className="text-xs text-[#F4F1DE] leading-relaxed">
+                  {storyData.historicalFact}
+                </p>
+                <div className="mt-4 pt-3 border-t border-[#2A2E3D] flex items-center justify-between text-[11px] text-[#9496A1]">
+                  <span>Source: Cultural Archives</span>
+                  <span className="text-[#2A9D8F] font-semibold">✓ Accuracy Checked</span>
+                </div>
               </div>
-              <p className="text-xs text-[#F4F1DE] leading-relaxed">
-                {storyData.historicalFact}
-              </p>
-              <div className="mt-4 pt-3 border-t border-[#2A2E3D] flex items-center justify-between text-[11px] text-[#9496A1]">
-                <span>Source: Cultural Archives</span>
-                <span className="text-[#2A9D8F] font-semibold">✓ Accuracy Checked</span>
-              </div>
-            </div>
+            )}
 
             {/* Why This Matters for Heritage */}
             <div className="p-5 rounded-2xl bg-[#E07A5F]/10 border border-[#E07A5F]/30 text-xs text-[#F4F1DE]">

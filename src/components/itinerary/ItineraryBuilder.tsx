@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Calendar,
   Sparkles,
@@ -18,7 +18,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { ItineraryResponse, ItineraryDay } from "@/lib/types";
-import { MOCK_ITINERARY_DATA } from "@/lib/ai/mock-data";
 
 interface ItineraryBuilderProps {
   destination: string;
@@ -33,7 +32,7 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
     "Traditional Handcrafts & Textiles",
   ]);
   const [accessibilityNeeds, setAccessibilityNeeds] = useState("");
-  const [itinerary, setItinerary] = useState<ItineraryResponse>(MOCK_ITINERARY_DATA);
+  const [itinerary, setItinerary] = useState<ItineraryResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -54,13 +53,7 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
     );
   };
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (interests.length === 0) {
-      alert("Please select at least one cultural interest.");
-      return;
-    }
-
+  const fetchItinerary = async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/ai/itinerary", {
@@ -79,24 +72,30 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
       if (json.success && json.data) {
         setItinerary(json.data);
       } else {
-        setItinerary({
-          ...MOCK_ITINERARY_DATA,
-          title: `${days}-Day ${destination} Cultural Immersion Itinerary`,
-          totalDays: days,
-        });
+        setItinerary(null);
       }
     } catch (e) {
-      setItinerary({
-        ...MOCK_ITINERARY_DATA,
-        title: `${days}-Day ${destination} Cultural Immersion Itinerary`,
-        totalDays: days,
-      });
+      setItinerary(null);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchItinerary();
+  }, [destination]);
+
+  const handleGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (interests.length === 0) {
+      alert("Please select at least one cultural interest.");
+      return;
+    }
+    fetchItinerary();
+  };
+
   const handleSaveItinerary = () => {
+    if (!itinerary) return;
     const item = {
       id: `itinerary-${Date.now()}`,
       type: "itinerary" as any,
@@ -128,6 +127,7 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
   };
 
   const handleExportText = () => {
+    if (!itinerary) return;
     let content = `# ${itinerary.title}\n\n`;
     content += `**Destination:** ${itinerary.destination} | **Duration:** ${itinerary.totalDays} Days\n`;
     content += `**Sustainability Summary:** ${itinerary.sustainabilitySummary}\n\n---\n\n`;
@@ -158,65 +158,58 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E07A5F]/20 text-[#E07A5F] border border-[#E07A5F]/40 text-xs font-bold uppercase mb-3">
             <Calendar className="w-3.5 h-3.5" />
-            <span>AI Authentic Itinerary Architect</span>
+            <span>AI Cultural Itinerary Architect</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Design Your Custom Cultural Immersion
+            Design Your Custom Journey in {destination}
           </h2>
           <p className="text-sm text-[#9496A1] mt-1">
-            Tailor your trip by budget, pace, accessibility, and cultural interests while promoting sustainable heritage protection.
+            Build sustainable, multi-day routes centered around authentic guild interactions and living traditions.
           </p>
         </div>
       </div>
 
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Col: Customization Form (1 span) */}
-        <form onSubmit={handleGenerate} className="space-y-6 p-6 rounded-3xl bg-[#0F1117] border border-[#2A2E3D] h-fit">
-          <h3 className="text-base font-bold text-white flex items-center gap-2 border-b border-[#2A2E3D] pb-3">
-            <Sparkles className="w-4 h-4 text-[#D4AF37]" />
-            <span>Trip Preferences</span>
-          </h3>
-
-          {/* Days */}
+        {/* Left Col: Builder Controls (1 span) */}
+        <form onSubmit={handleGenerate} className="space-y-6 lg:border-r lg:border-[#2A2E3D] lg:pr-8">
+          {/* Duration Selector */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#9496A1] mb-2">
-              Duration: {days} Days
+              Duration (Days): <span className="text-white font-extrabold">{days} Days</span>
             </label>
             <input
               type="range"
               min="1"
               max="7"
               value={days}
-              onChange={(e) => setDays(parseInt(e.target.value))}
-              className="w-full accent-[#E07A5F] bg-[#181B26] h-2 rounded-lg cursor-pointer"
+              onChange={(e) => setDays(Number(e.target.value))}
+              className="w-full accent-[#E07A5F] bg-[#0F1117] h-2 rounded-lg cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-[#9496A1] mt-1 font-semibold">
-              <span>1 Day (Express)</span>
+              <span>1 Day (Highlight)</span>
               <span>3 Days (Standard)</span>
               <span>7 Days (Deep Dive)</span>
             </div>
           </div>
 
-          {/* Budget */}
+          {/* Budget Selector */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#9496A1] mb-2">
-              Budget Level
+              Travel Budget Level
             </label>
-            <div className="grid grid-cols-3 gap-2" role="radiogroup">
-              {(["budget", "moderate", "luxury"] as const).map((b) => (
+            <div className="grid grid-cols-3 gap-2">
+              {(["budget", "moderate", "luxury"] as const).map((lvl) => (
                 <button
-                  key={b}
+                  key={lvl}
                   type="button"
-                  onClick={() => setBudget(b)}
-                  role="radio"
-                  aria-checked={budget === b}
-                  className={`py-2 text-xs font-bold capitalize rounded-xl border transition-all ${
-                    budget === b
-                      ? "bg-[#D4AF37] text-[#0F1117] border-[#D4AF37] shadow-md"
-                      : "bg-[#181B26] text-[#9496A1] border-[#2A2E3D] hover:text-white"
+                  onClick={() => setBudget(lvl)}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold capitalize transition-all border ${
+                    budget === lvl
+                      ? "bg-[#D4AF37] text-[#0F1117] border-[#D4AF37] shadow-md scale-105"
+                      : "bg-[#0F1117] text-[#9496A1] border-[#2A2E3D] hover:text-white"
                   }`}
                 >
-                  {b}
+                  {lvl}
                 </button>
               ))}
             </div>
@@ -225,28 +218,32 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
           {/* Cultural Interests Checkboxes */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#9496A1] mb-2">
-              Cultural Focus (Select 1+)
+              Cultural Focus Areas
             </label>
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
               {interestOptions.map((option) => {
-                const checked = interests.includes(option);
+                const isSelected = interests.includes(option);
                 return (
-                  <label
+                  <div
                     key={option}
-                    className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer text-xs font-medium transition-all ${
-                      checked
-                        ? "bg-[#E07A5F]/10 border-[#E07A5F] text-white"
-                        : "bg-[#181B26]/50 border-[#2A2E3D] text-[#9496A1] hover:bg-[#181B26]"
+                    onClick={() => toggleInterest(option)}
+                    className={`flex items-center justify-between p-3 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                      isSelected
+                        ? "bg-[#E07A5F]/15 border-[#E07A5F] text-white"
+                        : "bg-[#0F1117] border-[#2A2E3D] text-[#9496A1] hover:border-[#9496A1]"
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleInterest(option)}
-                      className="rounded accent-[#E07A5F] w-4 h-4"
-                    />
                     <span>{option}</span>
-                  </label>
+                    <div
+                      className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+                        isSelected
+                          ? "bg-[#E07A5F] border-[#E07A5F] text-white"
+                          : "border-[#2A2E3D] bg-[#181B26]"
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -286,6 +283,14 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
                 Optimizing routes for cultural immersion and seasonal authenticity in {destination}.
               </p>
             </div>
+          ) : !itinerary ? (
+            <div className="p-16 rounded-3xl bg-[#0F1117] border border-[#2A2E3D] text-center flex flex-col items-center justify-center">
+              <Sparkles className="w-10 h-10 text-[#D4AF37] mb-3 opacity-60" />
+              <h3 className="text-lg font-bold text-white">No Custom Itinerary Generated Yet</h3>
+              <p className="text-xs text-[#9496A1] max-w-md mt-1">
+                Select your preferred duration, budget, and cultural interests on the left, then click Generate AI Itinerary to craft a personalized journey for {destination}.
+              </p>
+            </div>
           ) : (
             <div className="space-y-6 animate-in fade-in duration-300">
               {/* Itinerary Title & Actions Header */}
@@ -320,101 +325,130 @@ export function ItineraryBuilder({ destination }: ItineraryBuilderProps) {
                 </div>
               </div>
 
-              {/* Sustainability Callout */}
-              <div className="p-4 rounded-2xl bg-[#2A9D8F]/15 border border-[#2A9D8F]/40 flex items-start gap-3 text-xs text-[#F4F1DE]">
+              {/* Sustainability Summary Banner */}
+              <div className="p-5 rounded-2xl bg-[#2A9D8F]/10 border border-[#2A9D8F]/30 flex items-start gap-3">
                 <ShieldCheck className="w-5 h-5 text-[#2A9D8F] shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-[#2A9D8F] block mb-0.5">Ethical & Sustainable Travel Impact:</strong>
-                  <p className="text-[#9496A1] leading-relaxed">{itinerary.sustainabilitySummary}</p>
+                <div className="text-left">
+                  <h4 className="text-xs font-extrabold text-[#2A9D8F] uppercase tracking-wider">
+                    Sustainable Cultural Tourism Impact
+                  </h4>
+                  <p className="text-xs text-[#F4F1DE] mt-1 leading-relaxed">
+                    {itinerary.sustainabilitySummary}
+                  </p>
                 </div>
               </div>
 
-              {/* Day Cards */}
+              {/* Days Timeline Accordions/Cards */}
               <div className="space-y-6">
-                {itinerary.days.slice(0, days).map((day) => (
+                {itinerary.days.map((day: ItineraryDay) => (
                   <div
                     key={day.dayNumber}
-                    className="p-6 sm:p-8 rounded-3xl bg-[#0F1117] border border-[#2A2E3D] space-y-6 shadow-xl text-left"
+                    className="rounded-3xl bg-[#0F1117] border border-[#2A2E3D] overflow-hidden text-left shadow-xl"
                   >
-                    <div className="flex items-center justify-between pb-4 border-b border-[#2A2E3D]">
+                    {/* Day Header */}
+                    <div className="px-6 py-4 bg-[#181B26] border-b border-[#2A2E3D] flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-full bg-[#E07A5F] text-white font-extrabold text-sm flex items-center justify-center shadow">
+                        <span className="w-8 h-8 rounded-xl bg-[#E07A5F] text-white flex items-center justify-center font-extrabold text-sm shadow">
                           {day.dayNumber}
                         </span>
-                        <h4 className="text-lg sm:text-xl font-bold text-white">{day.theme}</h4>
+                        <h4 className="text-base font-extrabold text-white">
+                          Day {day.dayNumber}: {day.theme}
+                        </h4>
                       </div>
                     </div>
 
-                    {/* Timeline */}
-                    <div className="space-y-5">
+                    {/* Day Schedule Grid (Morning / Afternoon / Evening) */}
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                       {/* Morning */}
-                      <div className="flex items-start gap-4">
-                        <div className="w-8 h-8 rounded-xl bg-[#D4AF37]/20 text-[#D4AF37] flex items-center justify-center shrink-0 mt-1">
+                      <div className="space-y-2 border-l-2 border-[#D4AF37] pl-4">
+                        <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#D4AF37]">
                           <Sun className="w-4 h-4" />
+                          <span>Morning ({day.morningActivity.time})</span>
                         </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-[#D4AF37]">{day.morningActivity.time}</span>
-                            <span className="text-sm font-extrabold text-white">{day.morningActivity.title}</span>
-                          </div>
-                          <p className="text-xs text-[#9496A1] leading-relaxed">{day.morningActivity.description}</p>
-                          <p className="text-[11px] text-[#2A9D8F] font-semibold italic pt-0.5">
-                            ✨ Significance: {day.morningActivity.culturalSignificance}
+                        <h5 className="text-sm font-bold text-white">
+                          {day.morningActivity.title}
+                        </h5>
+                        <p className="text-xs text-[#9496A1] leading-relaxed">
+                          {day.morningActivity.description}
+                        </p>
+                        <div className="pt-2">
+                          <span className="text-[10px] font-bold text-[#E07A5F] uppercase block">
+                            Why this matters:
+                          </span>
+                          <p className="text-[11px] text-[#F4F1DE]/80 leading-snug mt-0.5">
+                            {day.morningActivity.culturalSignificance}
                           </p>
                         </div>
                       </div>
 
                       {/* Afternoon */}
-                      <div className="flex items-start gap-4 pt-4 border-t border-[#2A2E3D]/50">
-                        <div className="w-8 h-8 rounded-xl bg-[#E07A5F]/20 text-[#E07A5F] flex items-center justify-center shrink-0 mt-1">
+                      <div className="space-y-2 border-l-2 border-[#E07A5F] pl-4">
+                        <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#E07A5F]">
                           <Sunset className="w-4 h-4" />
+                          <span>Afternoon ({day.afternoonActivity.time})</span>
                         </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-[#E07A5F]">{day.afternoonActivity.time}</span>
-                            <span className="text-sm font-extrabold text-white">{day.afternoonActivity.title}</span>
-                          </div>
-                          <p className="text-xs text-[#9496A1] leading-relaxed">{day.afternoonActivity.description}</p>
-                          <p className="text-[11px] text-[#2A9D8F] font-semibold italic pt-0.5">
-                            ✨ Significance: {day.afternoonActivity.culturalSignificance}
+                        <h5 className="text-sm font-bold text-white">
+                          {day.afternoonActivity.title}
+                        </h5>
+                        <p className="text-xs text-[#9496A1] leading-relaxed">
+                          {day.afternoonActivity.description}
+                        </p>
+                        <div className="pt-2">
+                          <span className="text-[10px] font-bold text-[#E07A5F] uppercase block">
+                            Why this matters:
+                          </span>
+                          <p className="text-[11px] text-[#F4F1DE]/80 leading-snug mt-0.5">
+                            {day.afternoonActivity.culturalSignificance}
                           </p>
                         </div>
                       </div>
 
                       {/* Evening */}
-                      <div className="flex items-start gap-4 pt-4 border-t border-[#2A2E3D]/50">
-                        <div className="w-8 h-8 rounded-xl bg-[#264653]/40 text-[#2A9D8F] flex items-center justify-center shrink-0 mt-1">
-                          <Moon className="w-4 h-4" />
+                      <div className="space-y-2 border-l-2 border-[#3D5A80] pl-4">
+                        <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#98C1D9]">
+                          <Moon className="w-4 h-4 text-[#98C1D9]" />
+                          <span>Evening ({day.eveningActivity.time})</span>
                         </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-[#2A9D8F]">{day.eveningActivity.time}</span>
-                            <span className="text-sm font-extrabold text-white">{day.eveningActivity.title}</span>
-                          </div>
-                          <p className="text-xs text-[#9496A1] leading-relaxed">{day.eveningActivity.description}</p>
-                          <p className="text-[11px] text-[#2A9D8F] font-semibold italic pt-0.5">
-                            ✨ Significance: {day.eveningActivity.culturalSignificance}
+                        <h5 className="text-sm font-bold text-white">
+                          {day.eveningActivity.title}
+                        </h5>
+                        <p className="text-xs text-[#9496A1] leading-relaxed">
+                          {day.eveningActivity.description}
+                        </p>
+                        <div className="pt-2">
+                          <span className="text-[10px] font-bold text-[#E07A5F] uppercase block">
+                            Why this matters:
+                          </span>
+                          <p className="text-[11px] text-[#F4F1DE]/80 leading-snug mt-0.5">
+                            {day.eveningActivity.culturalSignificance}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Culinary & Interaction Tip Footer */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-5 border-t border-[#2A2E3D]">
-                      <div className="p-3.5 rounded-2xl bg-[#181B26] border border-[#2A2E3D] text-xs space-y-1">
-                        <span className="font-bold text-[#D4AF37] flex items-center gap-1.5">
-                          <Utensils className="w-3.5 h-3.5" /> 🍽️ Daily Gastronomy
-                        </span>
-                        <p className="font-extrabold text-white">{day.culinaryRecommendation.dishName}</p>
-                        <p className="text-[11px] text-[#9496A1] line-clamp-2">{day.culinaryRecommendation.description}</p>
-                        <p className="text-[10px] text-[#2A9D8F] font-semibold pt-0.5">📍 Where to find: {day.culinaryRecommendation.whereToFind}</p>
+                    {/* Day Footer: Culinary & Etiquette Tip */}
+                    <div className="px-6 py-4 bg-[#181B26]/60 border-t border-[#2A2E3D] grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div className="flex items-start gap-2.5">
+                        <Utensils className="w-4 h-4 text-[#D4AF37] shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold text-white block">
+                            Culinary Highlight: {day.culinaryRecommendation.dishName}
+                          </span>
+                          <p className="text-[#9496A1] text-[11px] mt-0.5">
+                            {day.culinaryRecommendation.description} (Find at:{" "}
+                            <strong className="text-[#F4F1DE]">{day.culinaryRecommendation.whereToFind}</strong>)
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="p-3.5 rounded-2xl bg-[#181B26] border border-[#2A2E3D] text-xs space-y-1">
-                        <span className="font-bold text-[#E07A5F] flex items-center gap-1.5">
-                          <Info className="w-3.5 h-3.5" /> 💡 Local Interaction Tip
-                        </span>
-                        <p className="text-[11px] text-[#9496A1] leading-relaxed italic">{day.localInteractionTip}</p>
+                      <div className="flex items-start gap-2.5">
+                        <Info className="w-4 h-4 text-[#2A9D8F] shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold text-white block">Local Etiquette Tip</span>
+                          <p className="text-[#9496A1] text-[11px] mt-0.5">
+                            {day.localInteractionTip}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
