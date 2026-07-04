@@ -173,7 +173,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-lg font-bold text-white">Efficiency & Vercel AI SDK</h3>
               <p className="text-xs text-[#9496A1] leading-relaxed">
-                Powered by Google Gemini via `@ai-sdk/google` with structured JSON responses, optimistic UI updates, and an instant zero-latency mock fallback engine.
+                Powered by Google Gemini via `@ai-sdk/google` with structured JSON responses, optimistic UI updates, and a live Wikipedia factual discovery fallback engine.
               </p>
             </div>
 

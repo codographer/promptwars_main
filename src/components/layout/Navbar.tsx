@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Compass,
   Headphones,
   CalendarDays,
-  BookmarkCheck,
   User,
   LogOut,
   Sparkles,
@@ -17,14 +16,31 @@ import {
 } from "lucide-react";
 import { AuthModal } from "@/components/auth/AuthModal";
 
-export function Navbar() {
+function NavbarInner() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [badgeCount, setBadgeCount] = useState(3); // Default starter demo badges
+  const [badgeCount, setBadgeCount] = useState(3);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dynamicDest, setDynamicDest] = useState("kyoto");
+
+  const isExplorePage = pathname.startsWith("/explore/");
+  const currentTab = searchParams.get("tab") || "discover";
 
   useEffect(() => {
+    if (isExplorePage) {
+      const parts = pathname.split("/");
+      if (parts[2]) {
+        const dest = decodeURIComponent(parts[2].split("?")[0]);
+        setDynamicDest(dest);
+        localStorage.setItem("wanderlore_last_dest", dest);
+      }
+    } else {
+      const saved = localStorage.getItem("wanderlore_last_dest");
+      if (saved) setDynamicDest(saved);
+    }
+
     const storedUser = localStorage.getItem("wanderlore_user");
     if (storedUser) {
       try {
@@ -43,7 +59,7 @@ export function Navbar() {
         setBadgeCount(Array.isArray(parsed) ? parsed.length : 3);
       } catch (e) {}
     }
-  }, []);
+  }, [pathname, isExplorePage]);
 
   const handleSignOut = () => {
     localStorage.removeItem("wanderlore_user");
@@ -52,17 +68,22 @@ export function Navbar() {
   };
 
   const navLinks = [
-    { name: "Discover", href: "/explore/kyoto", icon: Compass },
-    { name: "Time-Traveler", href: "/explore/kyoto?tab=storyteller", icon: Headphones },
-    { name: "Itineraries", href: "/explore/kyoto?tab=itinerary", icon: CalendarDays },
-    { name: "Local Events", href: "/explore/kyoto?tab=events", icon: Sparkles },
-    {
-      name: "Passport",
-      href: "/passport",
-      icon: Award,
-      badge: badgeCount,
-    },
+    { name: "Discover", href: `/explore/${dynamicDest}?tab=discover`, tabId: "discover", icon: Compass },
+    { name: "Time-Traveler", href: `/explore/${dynamicDest}?tab=storyteller`, tabId: "storyteller", icon: Headphones },
+    { name: "Itineraries", href: `/explore/${dynamicDest}?tab=itinerary`, tabId: "itinerary", icon: CalendarDays },
+    { name: "Local Events", href: `/explore/${dynamicDest}?tab=events`, tabId: "events", icon: Sparkles },
+    { name: "Passport", href: "/passport", tabId: "passport", icon: Award, badge: badgeCount },
   ];
+
+  const checkIsActive = (link: typeof navLinks[0]) => {
+    if (link.tabId === "passport") {
+      return pathname.startsWith("/passport");
+    }
+    if (isExplorePage) {
+      return currentTab === link.tabId;
+    }
+    return false;
+  };
 
   return (
     <>
@@ -90,7 +111,7 @@ export function Navbar() {
           <nav className="hidden md:flex items-center gap-1 bg-[#181B26]/80 p-1.5 rounded-2xl border border-[#2A2E3D]">
             {navLinks.map((link) => {
               const Icon = link.icon;
-              const isActive = pathname === link.href || pathname.startsWith(link.href.split("?")[0]);
+              const isActive = checkIsActive(link);
               return (
                 <Link
                   key={link.name}
@@ -163,12 +184,17 @@ export function Navbar() {
           <div className="md:hidden bg-[#181B26] border-b border-[#2A2E3D] px-4 pt-3 pb-6 space-y-2 animate-in slide-in-from-top-2">
             {navLinks.map((link) => {
               const Icon = link.icon;
+              const isActive = checkIsActive(link);
               return (
                 <Link
                   key={link.name}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#0F1117]/60 text-white font-semibold text-sm"
+                  className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${
+                    isActive
+                      ? "bg-[#E07A5F] text-white shadow-md"
+                      : "bg-[#0F1117]/60 text-white hover:bg-[#2A2E3D]/50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <Icon className="w-5 h-5 text-[#E07A5F]" />
@@ -222,5 +248,13 @@ export function Navbar() {
         onSuccessGuest={(guestUser) => setUser(guestUser)}
       />
     </>
+  );
+}
+
+export function Navbar() {
+  return (
+    <Suspense fallback={<header className="sticky top-0 z-40 w-full glass-nav h-20" />}>
+      <NavbarInner />
+    </Suspense>
   );
 }

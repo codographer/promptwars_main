@@ -8,10 +8,6 @@ import {
   ItineraryResponse,
   PersonaId,
 } from "@/lib/types";
-import {
-  MOCK_DISCOVER_DATA,
-  MOCK_STORYTELLER_DATA,
-} from "./mock-data";
 import { ItineraryInput } from "@/lib/validations";
 
 /**
@@ -288,15 +284,6 @@ async function enrichEventPhotos(events: LocalEvent[], destination: string): Pro
   );
 }
 
-/**
- * Helper to check if destination matches curated rich mock data (ONLY when explicitly requested)
- */
-function getCuratedMockKey(destination: string): string | null {
-  const clean = destination.toLowerCase().trim();
-  if (clean === "kyoto") return "kyoto";
-  if (clean === "oaxaca") return "oaxaca";
-  return null;
-}
 
 /**
  * Live Wikipedia Factual Discovery Fallback Engine
@@ -469,12 +456,9 @@ export async function generateDiscovery(
   }
 
   const apiKey = getApiKey();
-  const curatedKey = getCuratedMockKey(intent.cleanDestination);
 
   if (!apiKey) {
-    const fallback = curatedKey
-      ? MOCK_DISCOVER_DATA[curatedKey]
-      : await fetchFactualWikipediaDiscovery(intent);
+    const fallback = await fetchFactualWikipediaDiscovery(intent);
     setToCache(cacheKey, fallback);
     return fallback;
   }
@@ -540,11 +524,18 @@ export async function generateDiscovery(
     return enriched;
   } catch (error) {
     console.warn(`Gemini API error during discover for "${intent.cleanDestination}", using live Wikipedia enrichment:`, error);
-    const fallback = curatedKey
-      ? MOCK_DISCOVER_DATA[curatedKey]
-      : await fetchFactualWikipediaDiscovery(intent);
+    const fallback = await fetchFactualWikipediaDiscovery(intent);
     setToCache(cacheKey, fallback);
     return fallback;
+  }
+}
+
+function personaNameMap(p: PersonaId): string {
+  switch (p) {
+    case "historian": return "Court Historian & Scholar";
+    case "artisan": return "Master Artisan & Guild Weaver";
+    case "bard": return "Wandering Folklore Bard";
+    case "anthropologist": return "Cultural Heritage Anthropologist";
   }
 }
 
@@ -565,21 +556,24 @@ export async function generateStory(
   }
 
   const apiKey = getApiKey();
-  const fallbackBase = MOCK_STORYTELLER_DATA[persona] || MOCK_STORYTELLER_DATA["historian"];
+
+  const createDynamicStoryFallback = (): StorytellerResponse => ({
+    title: `The Story of ${landmarkName} in ${destination}`,
+    personaName: personaNameMap(persona),
+    timePeriod: "Historical Heritage Era",
+    storyContent: `Welcome, traveler. As a ${personaNameMap(persona)} in ${destination}, let me reveal the factual history and cultural significance of ${landmarkName}. For generations, our community has gathered within these historic grounds, preserving sacred rituals, architectural mastery, and local customs. Every stone and carved beam echoes with the resilience and artistry of those who built and protected ${destination}.`,
+    audioScript: `Welcome to ${landmarkName} in ${destination}. Listen closely to the echoes of living heritage and authentic traditions that shape our history.`,
+    historicalFact: `Historical documentation confirms that ${landmarkName} has served as a pivotal cultural and communal gathering site in ${destination}.`,
+    culturalProverb: {
+      original: "Tradition is the preservation of fire, not the worship of ashes.",
+      translation: "Honor the wisdom of ancestors by keeping their crafts and stories alive.",
+      meaning: "Cultural heritage survives when each generation actively values and practices it.",
+    },
+    tags: [persona, "Living History", destination],
+  });
 
   if (!apiKey) {
-    const dynamicStory: StorytellerResponse = {
-      ...fallbackBase,
-      title: `The Story of ${landmarkName} in ${destination} (${fallbackBase.timePeriod})`,
-      storyContent: `Welcome, traveler. As a ${personaNameMap(persona)} in ${destination}, let me reveal the factual history and cultural significance of ${landmarkName}. For generations, our community has gathered within these historic grounds, preserving sacred rituals, architectural mastery, and local customs. Every stone and carved beam echoes with the resilience and artistry of those who built and protected ${destination}.`,
-      audioScript: `Welcome to ${landmarkName} in ${destination}. Listen closely to the echoes of living heritage and authentic traditions that shape our history.`,
-      historicalFact: `Historical documentation confirms that ${landmarkName} has served as a pivotal cultural and communal gathering site in ${destination}.`,
-      culturalProverb: {
-        original: "Tradition is the preservation of fire, not the worship of ashes.",
-        translation: "Honor the wisdom of ancestors by keeping their crafts and stories alive.",
-        meaning: "Cultural heritage survives when each generation actively values and practices it.",
-      },
-    };
+    const dynamicStory = createDynamicStoryFallback();
     setToCache(cacheKey, dynamicStory);
     return dynamicStory;
   }
@@ -617,22 +611,9 @@ export async function generateStory(
     return result;
   } catch (error) {
     console.warn(`Gemini API error during storytelling for "${landmarkName}", using fallback:`, error);
-    const dynamicStory: StorytellerResponse = {
-      ...fallbackBase,
-      title: `The Story of ${landmarkName} in ${destination}`,
-      storyContent: `Welcome, traveler. As a ${personaNameMap(persona)} in ${destination}, let me reveal the factual history and cultural significance of ${landmarkName}. For generations, our community has gathered within these historic grounds, preserving sacred rituals, architectural mastery, and local customs. Every stone and carved beam echoes with the resilience and artistry of those who built and protected ${destination}.`,
-    };
+    const dynamicStory = createDynamicStoryFallback();
     setToCache(cacheKey, dynamicStory);
     return dynamicStory;
-  }
-}
-
-function personaNameMap(p: PersonaId): string {
-  switch (p) {
-    case "historian": return "Court Historian & Scholar";
-    case "artisan": return "Master Artisan & Guild Weaver";
-    case "bard": return "Wandering Folklore Bard";
-    case "anthropologist": return "Cultural Heritage Anthropologist";
   }
 }
 
